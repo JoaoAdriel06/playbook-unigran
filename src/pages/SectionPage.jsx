@@ -3,6 +3,16 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import { BlockRenderer } from '../components/blocks/BlockRenderer.jsx'
 
+const BLOCK_LABELS = {
+  text: 'Texto',
+  checklist: 'Checklist',
+  table: 'Tabela',
+  links: 'Links',
+  crm_template: 'Templates CRM',
+  notepad: 'Bloco de Notas',
+  search: 'Busca',
+}
+
 export default function SectionPage({ slug: slugProp }) {
   const { slug: slugParam } = useParams()
   const slug = slugProp || slugParam
@@ -68,12 +78,9 @@ export default function SectionPage({ slug: slugProp }) {
   const sidebarEnabled = section.show_sidebar
   const searchBlocks = blocks.filter(b => b.type === 'search')
   const nonSearchBlocks = blocks.filter(b => b.type !== 'search')
-  const sidebarBlocks = sidebarEnabled ? nonSearchBlocks.filter(b => b.title) : []
+  // Include every non-search block in sidebar (fallback to type label if no title)
+  const sidebarBlocks = sidebarEnabled ? nonSearchBlocks : []
   const hasSidebar = sidebarEnabled && sidebarBlocks.length > 0
-
-  // Active block defaults to first sidebar block
-  const currentId = activeId || (sidebarBlocks[0]?.id)
-  const activeBlock = hasSidebar ? nonSearchBlocks.find(b => b.id === currentId) : null
 
   const position = section.sidebar_position || 'left'
   const sidebarSticky = !!(hasSidebar && position === 'top' && section.sidebar_sticky)
@@ -83,16 +90,30 @@ export default function SectionPage({ slug: slugProp }) {
 
   const hasStickyBar = sidebarSticky || stickySearchBlocks.length > 0
 
+  const scrollToBlock = (blockId) => {
+    setActiveId(blockId)
+    setTimeout(() => {
+      document.getElementById(`block-${blockId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 60)
+  }
+
   const SidebarNav = ({ className }) => (
     <nav className={className}>
       <div className="page-sidebar-title">Nesta página</div>
-      {sidebarBlocks.map(block => (
-        <a
-          key={block.id}
-          className={'page-sidebar-link' + (currentId === block.id ? ' active' : '')}
-          onClick={() => setActiveId(block.id)}
-        >{block.title}</a>
-      ))}
+      {sidebarBlocks.map(block => {
+        const label = block.title || BLOCK_LABELS[block.type] || block.type
+        return (
+          <a
+            key={block.id}
+            href={`#block-${block.id}`}
+            className={'page-sidebar-link' + (activeId === block.id ? ' active' : '')}
+            onClick={e => {
+              e.preventDefault()
+              scrollToBlock(block.id)
+            }}
+          >{label}</a>
+        )
+      })}
     </nav>
   )
 
@@ -105,15 +126,7 @@ export default function SectionPage({ slug: slugProp }) {
   const handleNavigate = (blockId, term = '') => {
     setHighlight({ blockId, term })
     setTimeout(() => setHighlight({ blockId: null, term: '' }), 5000)
-
-    if (hasSidebar && sidebarBlocks.find(b => b.id === blockId)) {
-      setActiveId(blockId)
-      setTimeout(() => {
-        document.getElementById(`block-${blockId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 60)
-    } else {
-      document.getElementById(`block-${blockId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
+    scrollToBlock(blockId)
   }
 
   const renderBlock = (block) => (
@@ -126,7 +139,6 @@ export default function SectionPage({ slug: slugProp }) {
     />
   )
 
-  // Sticky bar: sidebar (top) first, then sticky search blocks
   const StickyBar = () => (
     <div className="page-sticky-bar">
       {sidebarSticky && <SidebarNav className="page-sidebar-top" />}
@@ -137,17 +149,11 @@ export default function SectionPage({ slug: slugProp }) {
   const Content = () => (
     <>
       {normalSearchBlocks.map(block => renderBlock(block))}
-      {nonSearchBlocks.length === 0 ? (
-        searchBlocks.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-state-icon">📭</div>
-            <div className="empty-state-text">Esta seção ainda não tem conteúdo.<br />Adicione blocos pelo painel Admin.</div>
-          </div>
-        )
-      ) : hasSidebar ? (
-        activeBlock
-          ? renderBlock(activeBlock)
-          : <div className="empty-state"><div className="empty-state-text">Selecione um item na navegação.</div></div>
+      {nonSearchBlocks.length === 0 && searchBlocks.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">📭</div>
+          <div className="empty-state-text">Esta seção ainda não tem conteúdo.<br />Adicione blocos pelo painel Admin.</div>
+        </div>
       ) : (
         nonSearchBlocks.map(block => renderBlock(block))
       )}

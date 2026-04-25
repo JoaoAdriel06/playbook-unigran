@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { TextBlock, sanitizeHtml } from '../blocks/BlockRenderer'
 
 const BLOCK_TYPES = [
   { value: 'text', label: '📝 Texto livre', desc: 'Parágrafos de texto. Ideal para o Help da equipe, instruções longas, documentos internos.' },
@@ -16,17 +17,21 @@ export default function BlockEditor({ block, sectionTitle, onSave, onCancel }) {
   const [content, setContent] = useState(block?.content || getDefaultContent(block?.type || 'text'))
   const [saving, setSaving] = useState(false)
   const [jsonError, setJsonError] = useState('')
+  const textEditorRef = useRef(null)
 
-  // When type changes, reset content to default for that type
   const handleTypeChange = (newType) => {
-    if (block) return // don't reset when editing existing
+    if (block) return
     setType(newType)
     setContent(getDefaultContent(newType))
   }
 
   const handleSave = async () => {
     setSaving(true)
-    await onSave({ type, title, content })
+    let finalContent = content
+    if (type === 'text' && textEditorRef.current) {
+      finalContent = textEditorRef.current.getContent()
+    }
+    await onSave({ type, title, content: finalContent })
     setSaving(false)
   }
 
@@ -89,7 +94,7 @@ export default function BlockEditor({ block, sectionTitle, onSave, onCancel }) {
 
       {/* Content editor per type */}
       {type === 'text' && (
-        <TextEditor content={content} onChange={setContent} />
+        <TextEditor ref={textEditorRef} content={content} onChange={setContent} />
       )}
       {type === 'checklist' && (
         <ChecklistEditor content={content} onChange={setContent} />
@@ -114,92 +119,178 @@ export default function BlockEditor({ block, sectionTitle, onSave, onCancel }) {
 }
 
 // ---- TEXT EDITOR (Rich) ----
-function TextEditor({ content, onChange }) {
+const TextEditor = forwardRef(function TextEditor({ content, onChange }, ref) {
+  const [mode, setMode] = useState('edit')
   const editorRef = useRef(null)
+
+  useImperativeHandle(ref, () => ({
+    getContent: () => {
+      if (!editorRef.current) return { ...content, isHtml: true }
+      const body = sanitizeHtml(editorRef.current.innerHTML)
+      return { ...content, body, isHtml: true }
+    }
+  }), [content])
 
   useEffect(() => {
     if (editorRef.current) {
-      editorRef.current.innerHTML = content.body || '<p>Digite aqui...</p>'
+      editorRef.current.innerHTML = content.body || ''
     }
-  }, []) // only on mount — avoids cursor reset on every keystroke
+  }, []) // only on mount
 
   const exec = (cmd, val = null) => {
-    document.execCommand('styleWithCSS', false, true)
+    document.execCommand('styleWithCSS', false, false)
     document.execCommand(cmd, false, val)
-    editorRef.current.focus()
-    onChange({ ...content, body: editorRef.current.innerHTML, isHtml: true })
+    if (editorRef.current) {
+      editorRef.current.focus()
+      onChange({ ...content, body: editorRef.current.innerHTML, isHtml: true })
+    }
   }
 
   const handleInput = () => {
-    onChange({ ...content, body: editorRef.current.innerHTML, isHtml: true })
+    if (editorRef.current) onChange({ ...content, body: editorRef.current.innerHTML, isHtml: true })
+  }
+
+  const handlePaste = (e) => {
+    e.preventDefault()
+    const html = e.clipboardData.getData('text/html')
+    const plain = e.clipboardData.getData('text/plain')
+    const sanitized = html
+      ? sanitizeHtml(html)
+      : plain.split('\n').filter(Boolean).map(l => `<p>${l}</p>`).join('')
+    document.execCommand('insertHTML', false, sanitized)
+    if (editorRef.current) onChange({ ...content, body: editorRef.current.innerHTML, isHtml: true })
+  }
+
+  const handleBlur = () => {
+    if (!editorRef.current) return
+    const clean = sanitizeHtml(editorRef.current.innerHTML)
+    if (clean !== editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = clean
+      onChange({ ...content, body: clean, isHtml: true })
+    }
+  }
+
+  const insertHr = (e) => {
+    e.preventDefault()
+    document.execCommand('insertHTML', false, '<hr>')
+    if (editorRef.current) onChange({ ...content, body: editorRef.current.innerHTML, isHtml: true })
+  }
+
+  const insertHighlight = (color) => {
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
+    const range = sel.getRangeAt(0)
+    const fragment = range.extractContents()
+    const span = document.createElement('span')
+    span.className = `hl-${color}`
+    span.appendChild(fragment)
+    range.insertNode(span)
+    sel.removeAllRanges()
+    if (editorRef.current) {
+      editorRef.current.focus()
+      onChange({ ...content, body: editorRef.current.innerHTML, isHtml: true })
+    }
   }
 
   return (
     <div className="card">
-      <div className="card-title">📝 Editor de Texto</div>
-
-      <div className="rich-toolbar">
-        <select className="rich-select" onChange={e => { exec('fontName', e.target.value); e.target.value = '' }} defaultValue="">
-          <option value="" disabled>Fonte</option>
-          <option value="Inter, sans-serif">Inter</option>
-          <option value="Arial, sans-serif">Arial</option>
-          <option value="Georgia, serif">Georgia</option>
-          <option value="'Times New Roman', serif">Times New Roman</option>
-          <option value="'Courier New', monospace">Courier New</option>
-        </select>
-
-        <select className="rich-select" onChange={e => { exec('fontSize', e.target.value); e.target.value = '' }} defaultValue="">
-          <option value="" disabled>Tamanho</option>
-          <option value="1">Muito pequeno</option>
-          <option value="2">Pequeno</option>
-          <option value="3">Normal</option>
-          <option value="4">Médio</option>
-          <option value="5">Grande</option>
-          <option value="6">Muito grande</option>
-          <option value="7">Enorme</option>
-        </select>
-
-        <span className="rich-divider" />
-
-        <button className="rich-btn rich-bold" title="Negrito (Ctrl+B)" onMouseDown={e => { e.preventDefault(); exec('bold') }}>B</button>
-        <button className="rich-btn rich-italic" title="Itálico (Ctrl+I)" onMouseDown={e => { e.preventDefault(); exec('italic') }}>I</button>
-        <button className="rich-btn rich-underline" title="Sublinhado (Ctrl+U)" onMouseDown={e => { e.preventDefault(); exec('underline') }}>U</button>
-
-        <span className="rich-divider" />
-
-        <label className="rich-color-btn" title="Cor do texto">
-          <span className="rich-color-icon" style={{ borderBottom: '3px solid #e53e3e' }}>A</span>
-          <input type="color" defaultValue="#000000" onChange={e => exec('foreColor', e.target.value)} className="rich-color-input" />
-        </label>
-
-        <label className="rich-color-btn" title="Marca-texto">
-          <span className="rich-color-icon" style={{ background: '#fef08a', padding: '0 2px' }}>ab</span>
-          <input type="color" defaultValue="#fef08a" onChange={e => exec('backColor', e.target.value)} className="rich-color-input" />
-        </label>
-
-        <span className="rich-divider" />
-
-        <button className="rich-btn" title="Alinhar à esquerda" onMouseDown={e => { e.preventDefault(); exec('justifyLeft') }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2"/><rect x="0" y="5" width="9" height="2"/><rect x="0" y="9" width="14" height="2"/><rect x="0" y="13" width="9" height="2"/></svg>
-        </button>
-        <button className="rich-btn" title="Centralizar" onMouseDown={e => { e.preventDefault(); exec('justifyCenter') }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2"/><rect x="2.5" y="5" width="9" height="2"/><rect x="0" y="9" width="14" height="2"/><rect x="2.5" y="13" width="9" height="2"/></svg>
-        </button>
-        <button className="rich-btn" title="Alinhar à direita" onMouseDown={e => { e.preventDefault(); exec('justifyRight') }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2"/><rect x="5" y="5" width="9" height="2"/><rect x="0" y="9" width="14" height="2"/><rect x="5" y="13" width="9" height="2"/></svg>
-        </button>
+      <div className="card-title" style={{ display: 'flex', alignItems: 'center' }}>
+        <span>📝 Editor de Texto</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+          <button
+            className={'btn btn-sm ' + (mode === 'edit' ? 'btn-primary' : 'btn-secondary')}
+            onClick={() => setMode('edit')}
+          >✏️ Editar</button>
+          <button
+            className={'btn btn-sm ' + (mode === 'preview' ? 'btn-primary' : 'btn-secondary')}
+            onClick={() => setMode('preview')}
+          >👁 Preview</button>
+        </div>
       </div>
 
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        className="rich-editor"
-        onInput={handleInput}
-      />
+      {/* Meta fields */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+          <label className="form-label">Categoria</label>
+          <input
+            className="form-input"
+            value={content.category || ''}
+            onChange={e => onChange({ ...content, category: e.target.value })}
+            placeholder="Ex: Vendas, Produto, Processos..."
+          />
+        </div>
+        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+          <label className="form-label">Atualizado em</label>
+          <input
+            className="form-input"
+            type="date"
+            value={content.updatedAt || ''}
+            onChange={e => onChange({ ...content, updatedAt: e.target.value })}
+          />
+        </div>
+      </div>
+
+      {/* Editor (kept mounted, hidden in preview mode) */}
+      <div style={{ display: mode === 'edit' ? '' : 'none' }}>
+        <div className="rich-toolbar rich-toolbar-dark" style={{ borderRadius: 'var(--r) var(--r) 0 0', marginBottom: 0 }}>
+          <select
+            className="rich-select rich-select-dark"
+            onChange={e => { exec('formatBlock', e.target.value); e.target.value = '' }}
+            defaultValue=""
+          >
+            <option value="" disabled>Estilo</option>
+            <option value="p">Parágrafo</option>
+            <option value="h1">Título (h1)</option>
+            <option value="h2">Seção (h2) — novo card</option>
+            <option value="h3">Subtópico (h3)</option>
+          </select>
+          <span className="rich-divider rich-divider-dark" />
+          <button className="rich-btn rich-btn-dark rich-bold" title="Negrito" onMouseDown={e => { e.preventDefault(); exec('bold') }}>B</button>
+          <button className="rich-btn rich-btn-dark rich-italic" title="Itálico" onMouseDown={e => { e.preventDefault(); exec('italic') }}>I</button>
+          <span className="rich-divider rich-divider-dark" />
+          <button
+            className="rich-btn rich-btn-dark"
+            title="Inserir divisor de seção — gera novo card"
+            onMouseDown={insertHr}
+            style={{ fontSize: 11, letterSpacing: '0.04em', fontWeight: 600 }}
+          >― HR</button>
+          <span className="rich-divider rich-divider-dark" />
+          <button
+            className="rich-btn rich-btn-dark"
+            title="Grifo Amarelo"
+            onMouseDown={e => { e.preventDefault(); insertHighlight('yellow') }}
+          ><span className="hl-yellow" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span></button>
+          <button
+            className="rich-btn rich-btn-dark"
+            title="Grifo Azul"
+            onMouseDown={e => { e.preventDefault(); insertHighlight('blue') }}
+          ><span className="hl-blue" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span></button>
+          <button
+            className="rich-btn rich-btn-dark"
+            title="Grifo Verde"
+            onMouseDown={e => { e.preventDefault(); insertHighlight('green') }}
+          ><span className="hl-green" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span></button>
+        </div>
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          className="rich-editor rich-editor-dark rich-editor-doc"
+          onInput={handleInput}
+          onPaste={handlePaste}
+          onBlur={handleBlur}
+        />
+      </div>
+
+      {/* Preview: same component as front */}
+      {mode === 'preview' && (
+        <div style={{ padding: '4px 0' }}>
+          <TextBlock content={content} />
+        </div>
+      )}
     </div>
   )
-}
+})
 
 // ---- CHECKLIST EDITOR ----
 function ChecklistEditor({ content, onChange }) {
@@ -321,6 +412,7 @@ function ChecklistEditor({ content, onChange }) {
 }
 
 // ---- TABLE CELL (contentEditable) ----
+
 function TableCell({ value, onBlur, style, className }) {
   const ref = useRef(null)
 
@@ -341,20 +433,49 @@ function TableCell({ value, onBlur, style, className }) {
 }
 
 // ---- TABLE EDITOR ----
+const COL_TYPE_OPTIONS = [
+  { value: 'text',       label: 'Texto' },
+  { value: 'currency',   label: 'Moeda' },
+  { value: 'percentage', label: 'Percentual' },
+  { value: 'status',     label: 'Status' },
+  { value: 'note',       label: 'Observação' },
+]
+
+const CURRENCY_KEYWORDS = ['investimento', 'mensalidade', 'valor', 'preço', 'preco', 'pontualidade', 'dp']
+
+function detectColTypes(hdrs) {
+  return hdrs.map(h => {
+    const lower = String(h).toLowerCase()
+    return CURRENCY_KEYWORDS.some(k => lower.includes(k)) ? 'currency' : 'text'
+  })
+}
+
 function TableEditor({ content, onChange }) {
   const headers = content.headers || ['Coluna 1', 'Coluna 2']
   const rows = content.rows || []
+  const columnTypes = content.column_types || headers.map(() => 'text')
   const [ver, setVer] = useState(0)
+  const [importMsg, setImportMsg] = useState(null)
+  const [pendingSheets, setPendingSheets] = useState(null)
+  const fileRef = useRef(null)
 
   const set = (updates) => onChange({ ...content, ...updates })
   const bumpVer = () => setVer(v => v + 1)
 
   const addColumn = () => {
-    set({ headers: [...headers, `Coluna ${headers.length + 1}`], rows: rows.map(r => [...r, '']) })
+    set({
+      headers: [...headers, `Coluna ${headers.length + 1}`],
+      rows: rows.map(r => [...r, '']),
+      column_types: [...columnTypes, 'text'],
+    })
   }
 
   const removeColumn = (ci) => {
-    set({ headers: headers.filter((_, i) => i !== ci), rows: rows.map(r => r.filter((_, i) => i !== ci)) })
+    set({
+      headers: headers.filter((_, i) => i !== ci),
+      rows: rows.map(r => r.filter((_, i) => i !== ci)),
+      column_types: columnTypes.filter((_, i) => i !== ci),
+    })
     bumpVer()
   }
 
@@ -369,88 +490,154 @@ function TableEditor({ content, onChange }) {
     const h = [...headers]; h[ci] = val; set({ headers: h })
   }
 
+  const updateColumnType = (ci, val) => {
+    const types = [...columnTypes]; types[ci] = val; set({ column_types: types })
+  }
+
   const updateCell = (ri, ci, val) => {
     set({ rows: rows.map((row, i) => i === ri ? row.map((c, j) => j === ci ? val : c) : row) })
   }
 
   const execCmd = (cmd, val = null) => {
-    document.execCommand('styleWithCSS', false, true)
+    document.execCommand('styleWithCSS', false, false)
     document.execCommand(cmd, false, val)
+  }
+
+  const insertHighlight = (color) => {
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
+    const range = sel.getRangeAt(0)
+    const fragment = range.extractContents()
+    const span = document.createElement('span')
+    span.className = `hl-${color}`
+    span.appendChild(fragment)
+    range.insertNode(span)
+    sel.removeAllRanges()
+  }
+
+  // ---- Excel / CSV import ----
+  const applySheet = (sheetData, sheetName) => {
+    const types = detectColTypes(sheetData.headers)
+    set({ headers: sheetData.headers, rows: sheetData.rows, column_types: types })
+    bumpVer()
+    setPendingSheets(null)
+    const currencyCount = types.filter(t => t === 'currency').length
+    setImportMsg({
+      type: 'success',
+      text: `✓ ${sheetData.rows.length} linhas · ${sheetData.headers.length} colunas importadas de "${sheetName}"${currencyCount ? ` · ${currencyCount} coluna(s) detectada(s) como moeda` : ''}`,
+    })
+  }
+
+  const parseWorkbook = (XLSX, wb) => {
+    const result = {}
+    for (const name of wb.SheetNames) {
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '' })
+      if (!raw || raw.length < 1) continue
+      const hdrs = (raw[0] || []).map(h => String(h ?? '').trim())
+      if (hdrs.every(h => !h)) continue
+      const rws = raw.slice(1)
+        .filter(row => row.some(c => String(c) !== ''))
+        .map(row => hdrs.map((_, ci) => String(row[ci] ?? '')))
+      result[name] = { headers: hdrs, rows: rws }
+    }
+    return result
+  }
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ''
+    setImportMsg(null)
+    setPendingSheets(null)
+    try {
+      const XLSX = await import('xlsx')
+      const ab = await file.arrayBuffer()
+      const wb = XLSX.read(new Uint8Array(ab), { type: 'array' })
+      const sheets = parseWorkbook(XLSX, wb)
+      const names = Object.keys(sheets)
+      if (names.length === 0) { setImportMsg({ type: 'error', text: 'Arquivo vazio ou sem dados válidos.' }); return }
+      if (names.length === 1) { applySheet(sheets[names[0]], names[0]) }
+      else { setPendingSheets({ names, sheets }); setImportMsg({ type: 'info', text: `${names.length} planilhas encontradas. Selecione qual importar:` }) }
+    } catch (err) {
+      setImportMsg({ type: 'error', text: `Erro ao ler arquivo: ${err.message}` })
+    }
+  }
+
+  const IMPORT_MSG_COLORS = {
+    success: { bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.2)', color: '#4ADE80' },
+    error:   { bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.2)',  color: '#F87171' },
+    info:    { bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)', color: '#60A5FA' },
   }
 
   return (
     <div className="card">
       <div className="card-title">📊 Editor de Tabela</div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 0 }}>
-        <div className="form-group" style={{ flex: 1, marginBottom: 12 }}>
+      {/* Top controls */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16, alignItems: 'flex-end' }}>
+        <div className="form-group" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
           <label className="form-label">Subtítulo</label>
-          <input
-            className="form-input"
-            value={content.subtitle || ''}
-            onChange={e => set({ subtitle: e.target.value })}
-            placeholder="Ex: Valores válidos para 2026"
-          />
+          <input className="form-input" value={content.subtitle || ''} onChange={e => set({ subtitle: e.target.value })} placeholder="Ex: Valores válidos para 2026" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, paddingBottom: 12 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', paddingBottom: 4 }}>
-            <input
-              type="checkbox"
-              checked={!!content.searchable}
-              onChange={e => set({ searchable: e.target.checked })}
-              style={{ accentColor: 'var(--accent)' }}
-            />
-            Buscável
-          </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', paddingBottom: 4, flexShrink: 0 }}>
+          <input type="checkbox" checked={!!content.searchable} onChange={e => set({ searchable: e.target.checked })} style={{ accentColor: 'var(--accent)' }} />
+          Buscável
+        </label>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileRef.current?.click()}>📥 Importar Excel</button>
+          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>.xlsx · .xls · .csv</span>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handleFile} />
         </div>
       </div>
 
-      {/* Rich text toolbar — dark theme */}
+      {/* Import feedback */}
+      {importMsg && (() => {
+        const c = IMPORT_MSG_COLORS[importMsg.type] || IMPORT_MSG_COLORS.info
+        return <div style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color, borderRadius: 10, padding: '10px 14px', fontSize: 13, marginBottom: 12 }}>{importMsg.text}</div>
+      })()}
+
+      {/* Multi-sheet selector */}
+      {pendingSheets && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          {pendingSheets.names.map(name => (
+            <button key={name} type="button" className="btn btn-secondary btn-sm" onClick={() => applySheet(pendingSheets.sheets[name], name)}>{name}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Simplified toolbar — same pattern as text editor */}
       <div className="rich-toolbar rich-toolbar-dark" style={{ borderRadius: 'var(--r) var(--r) 0 0', marginBottom: 0 }}>
         <select className="rich-select rich-select-dark"
-          onChange={e => { execCmd('fontName', e.target.value); e.target.value = '' }} defaultValue="">
-          <option value="" disabled>Fonte</option>
-          <option value="Inter, sans-serif">Inter</option>
-          <option value="Arial, sans-serif">Arial</option>
-          <option value="Georgia, serif">Georgia</option>
-          <option value="'Times New Roman', serif">Times New Roman</option>
-          <option value="'Courier New', monospace">Courier New</option>
+          onChange={e => { execCmd('formatBlock', e.target.value); e.target.value = '' }} defaultValue="">
+          <option value="" disabled>Estilo</option>
+          <option value="h3">Título</option>
+          <option value="h4">Subtítulo</option>
+          <option value="p">Texto</option>
         </select>
-
-        <select className="rich-select rich-select-dark"
-          onChange={e => { execCmd('fontSize', e.target.value); e.target.value = '' }} defaultValue="">
-          <option value="" disabled>Tamanho</option>
-          <option value="1">XS</option>
-          <option value="2">P</option>
-          <option value="3">M</option>
-          <option value="4">G</option>
-          <option value="5">XG</option>
-          <option value="6">2X</option>
-        </select>
-
         <span className="rich-divider rich-divider-dark" />
-
         <button className="rich-btn rich-btn-dark rich-bold" title="Negrito"
           onMouseDown={e => { e.preventDefault(); execCmd('bold') }}>B</button>
         <button className="rich-btn rich-btn-dark rich-italic" title="Itálico"
           onMouseDown={e => { e.preventDefault(); execCmd('italic') }}>I</button>
-        <button className="rich-btn rich-btn-dark rich-underline" title="Sublinhado"
-          onMouseDown={e => { e.preventDefault(); execCmd('underline') }}>U</button>
-
         <span className="rich-divider rich-divider-dark" />
-
-        <label className="rich-color-btn rich-color-btn-dark" title="Cor do texto">
-          <span className="rich-color-icon" style={{ borderBottom: '3px solid #e53e3e' }}>A</span>
-          <input type="color" defaultValue="#ffffff" onChange={e => execCmd('foreColor', e.target.value)} className="rich-color-input" />
-        </label>
-
-        <label className="rich-color-btn rich-color-btn-dark" title="Marca-texto">
-          <span className="rich-color-icon" style={{ background: '#fef08a', padding: '0 2px', color: '#333' }}>ab</span>
-          <input type="color" defaultValue="#fef08a" onChange={e => execCmd('backColor', e.target.value)} className="rich-color-input" />
-        </label>
-
+        <button className="rich-btn rich-btn-dark"
+          title="Inserir divisor"
+          onMouseDown={e => { e.preventDefault(); document.execCommand('insertHTML', false, '<hr>') }}
+          style={{ fontSize: 11, letterSpacing: '0.04em', fontWeight: 600 }}>― HR</button>
         <span className="rich-divider rich-divider-dark" />
-
+        <button className="rich-btn rich-btn-dark" title="Grifo Amarelo"
+          onMouseDown={e => { e.preventDefault(); insertHighlight('yellow') }}>
+          <span className="hl-yellow" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span>
+        </button>
+        <button className="rich-btn rich-btn-dark" title="Grifo Azul"
+          onMouseDown={e => { e.preventDefault(); insertHighlight('blue') }}>
+          <span className="hl-blue" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span>
+        </button>
+        <button className="rich-btn rich-btn-dark" title="Grifo Verde"
+          onMouseDown={e => { e.preventDefault(); insertHighlight('green') }}>
+          <span className="hl-green" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span>
+        </button>
+        <span className="rich-divider rich-divider-dark" />
         <button className="rich-btn rich-btn-dark" title="Alinhar à esquerda"
           onMouseDown={e => { e.preventDefault(); execCmd('justifyLeft') }}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2"/><rect x="0" y="5" width="9" height="2"/><rect x="0" y="9" width="14" height="2"/><rect x="0" y="13" width="9" height="2"/></svg>
@@ -471,23 +658,31 @@ function TableEditor({ content, onChange }) {
           <thead>
             <tr>
               {headers.map((h, ci) => (
-                <th key={`${ver}_h_${ci}`} style={{ padding: 0, background: 'var(--bg-3)', border: '1px solid var(--border)', minWidth: 100 }}>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <TableCell
-                      value={h}
-                      onBlur={val => updateHeader(ci, val)}
-                      style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--text-2)', padding: '6px 8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}
-                    />
-                    {headers.length > 1 && (
-                      <button onClick={() => removeColumn(ci)}
-                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, padding: '0 8px', lineHeight: 1, flexShrink: 0 }}>×</button>
-                    )}
+                <th key={`${ver}_h_${ci}`} style={{ padding: 0, background: 'var(--bg-3)', border: '1px solid var(--border)', minWidth: 120 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <TableCell
+                        value={h}
+                        onBlur={val => updateHeader(ci, val)}
+                        style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--text-2)', padding: '6px 8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                      />
+                      {headers.length > 1 && (
+                        <button onClick={() => removeColumn(ci)}
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, padding: '0 8px', lineHeight: 1, flexShrink: 0 }}>×</button>
+                      )}
+                    </div>
+                    <select
+                      value={columnTypes[ci] || 'text'}
+                      onChange={e => updateColumnType(ci, e.target.value)}
+                      style={{ fontSize: 10, background: 'var(--bg)', border: 'none', borderTop: '1px solid var(--border)', color: 'var(--text-3)', padding: '3px 6px', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font)' }}
+                    >
+                      {COL_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                   </div>
                 </th>
               ))}
               <th style={{ padding: 4, background: 'var(--bg-3)', border: '1px solid var(--border)', width: 36, textAlign: 'center' }}>
-                <button onClick={addColumn}
-                  style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>+</button>
+                <button onClick={addColumn} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>+</button>
               </th>
             </tr>
           </thead>
@@ -496,16 +691,11 @@ function TableEditor({ content, onChange }) {
               <tr key={`${ver}_r_${ri}`}>
                 {row.map((cell, ci) => (
                   <td key={`${ver}_${ri}_${ci}`} style={{ border: '1px solid var(--border)', padding: 0, background: 'var(--bg-2)' }}>
-                    <TableCell
-                      value={cell}
-                      onBlur={val => updateCell(ri, ci, val)}
-                      style={{ fontSize: 13, color: 'var(--text)', padding: '5px 8px', minWidth: 80 }}
-                    />
+                    <TableCell value={cell} onBlur={val => updateCell(ri, ci, val)} style={{ fontSize: 13, color: 'var(--text)', padding: '5px 8px', minWidth: 80 }} />
                   </td>
                 ))}
                 <td style={{ border: '1px solid var(--border)', padding: 4, width: 36, textAlign: 'center', background: 'var(--bg-2)' }}>
-                  <button onClick={() => removeRow(ri)}
-                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                  <button onClick={() => removeRow(ri)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
                 </td>
               </tr>
             ))}
@@ -580,12 +770,21 @@ function LinksEditor({ content, onChange }) {
 }
 
 // ---- CRM TEMPLATES EDITOR ----
+const CRM_COLOR_OPTIONS = [
+  { value: 'default',  label: 'Padrão' },
+  { value: 'destaque', label: '🟡 Destaque (amarelo)' },
+  { value: 'positivo', label: '🟢 Positivo (verde)' },
+  { value: 'alerta',   label: '🟠 Alerta (laranja)' },
+  { value: 'urgente',  label: '🔴 Urgente (vermelho)' },
+  { value: 'primario', label: '🔵 Primário (azul)' },
+]
+
 function CrmEditor({ content, onChange }) {
   const templates = content.templates || []
 
   const add = () => onChange({
     ...content,
-    templates: [...templates, { label: '📄 Novo template', text: '' }]
+    templates: [...templates, { label: '📄 Novo template', text: '', category: '', color: 'default' }]
   })
 
   const update = (i, key, val) => {
@@ -609,6 +808,25 @@ function CrmEditor({ content, onChange }) {
               style={{ flex: 1 }}
             />
             <button className="btn btn-danger btn-sm" onClick={() => remove(i)}>🗑</button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <input
+              className="form-input"
+              value={tpl.category || ''}
+              onChange={e => update(i, 'category', e.target.value)}
+              placeholder="Categoria (ex: Retorno, Abertura, Follow-up...)"
+              style={{ flex: 1 }}
+            />
+            <select
+              className="form-select"
+              value={tpl.color || 'default'}
+              onChange={e => update(i, 'color', e.target.value)}
+              style={{ width: 190, flexShrink: 0 }}
+            >
+              {CRM_COLOR_OPTIONS.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
           </div>
           <textarea
             className="form-textarea"
@@ -689,45 +907,34 @@ function SearchEditor({ content, onChange }) {
 }
 
 // ---- NOTEBOOK COLORS ----
-const NOTE_COLORS = [
-  { value: 'default', text: null, name: 'Padrão (fundo do site)' },
-  { value: '#fef9c3', text: '#713f12', name: 'Amarelo' },
-  { value: '#fde68a', text: '#78350f', name: 'Âmbar' },
-  { value: '#fed7aa', text: '#7c2d12', name: 'Laranja claro' },
-  { value: '#fdba74', text: '#9a3412', name: 'Laranja' },
-  { value: '#fca5a5', text: '#7f1d1d', name: 'Vermelho' },
-  { value: '#fce7f3', text: '#831843', name: 'Rosa claro' },
-  { value: '#fbcfe8', text: '#9d174d', name: 'Rosa' },
-  { value: '#dbeafe', text: '#1e3a5f', name: 'Azul claro' },
-  { value: '#bfdbfe', text: '#1e40af', name: 'Azul' },
-  { value: '#dcfce7', text: '#14532d', name: 'Verde claro' },
-  { value: '#bbf7d0', text: '#166534', name: 'Verde' },
-  { value: '#f3e8ff', text: '#4a044e', name: 'Roxo claro' },
-  { value: '#e9d5ff', text: '#581c87', name: 'Roxo' },
-  { value: '#f3f4f6', text: '#111827', name: 'Cinza claro' },
-  { value: '#d1d5db', text: '#374151', name: 'Cinza' },
-  { value: '#1e293b', text: '#e2e8f0', name: 'Azul noite' },
-  { value: '#111827', text: '#f9fafb', name: 'Preto' },
+const CARD_COLORS = [
+  { value: 'default',       label: 'Padrão (dourado)',        accent: '#f0ad4e' },
+  { value: 'vestibular',    label: '🔵 Vestibular',            accent: '#3B82F6' },
+  { value: 'enem',          label: '🟢 ENEM',                  accent: '#22C55E' },
+  { value: 'portador',      label: '🟡 Portador de Diploma',   accent: '#F59E0B' },
+  { value: 'transferencia', label: '🟣 Transferência',         accent: '#8B5CF6' },
+  { value: 'aviso',         label: '🔴 Aviso',                 accent: '#EF4444' },
 ]
 
-const getNoteEditorStyle = (colorValue) => {
-  if (!colorValue || colorValue === 'default') {
-    return { bg: '#2c2c2c', text: '#ffffff', border: '#495057' }
-  }
-  const found = NOTE_COLORS.find(c => c.value === colorValue)
-  return { bg: colorValue, text: found?.text || '#111', border: colorValue }
+const getCardAccent = (colorValue) => {
+  const found = CARD_COLORS.find(c => c.value === colorValue)
+  return found ? found.accent : '#f0ad4e'
 }
 
 // ---- NOTE CARD EDITOR (single card with rich text) ----
 function NoteCardEditor({ card, onUpdate, onRemove, onAddTodo, onUpdateTodo, onRemoveTodo }) {
   const editorRef = useRef(null)
-  const { bg, text, border } = getNoteEditorStyle(card.color)
+  const accent = getCardAccent(card.color)
+  const badgesStr = Array.isArray(card.badges)
+    ? card.badges.join(', ')
+    : (card.badges || '')
+  const badgesParsed = badgesStr ? badgesStr.split(',').map(b => b.trim()).filter(Boolean) : []
 
   useEffect(() => {
     if (editorRef.current) {
       editorRef.current.innerHTML = card.body || ''
     }
-  }, []) // mount only — same pattern as TextEditor
+  }, [])
 
   const exec = (cmd, val = null) => {
     document.execCommand('styleWithCSS', false, true)
@@ -740,75 +947,121 @@ function NoteCardEditor({ card, onUpdate, onRemove, onAddTodo, onUpdateTodo, onR
     if (editorRef.current) onUpdate({ body: editorRef.current.innerHTML, isHtml: true })
   }
 
+  const handleBadgesChange = (val) => {
+    const badges = val.split(',').map(b => b.trim()).filter(Boolean)
+    onUpdate({ badges })
+  }
+
   return (
-    <div style={{ border: `2px solid ${border}`, borderRadius: 12, overflow: 'hidden', background: bg, display: 'flex', flexDirection: 'column' }}>
-      {/* Colored accent bar + color picker + delete */}
-      <div style={{ background: bg === '#2c2c2c' ? 'var(--bg-3)' : bg + 'cc', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${border}44` }}>
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', flex: 1 }}>
-          {NOTE_COLORS.map(c => (
+    <div className="notepad-card" style={{ '--card-accent': accent }}>
+      {/* Top bar: color selector + delete */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {CARD_COLORS.map(c => (
             <button
               key={c.value}
-              title={c.name}
+              title={c.label}
               onClick={() => onUpdate({ color: c.value })}
               style={{
-                width: c.value === 'default' ? 22 : 18,
-                height: 18,
-                borderRadius: c.value === 'default' ? 5 : '50%',
-                background: c.value === 'default' ? '#2c2c2c' : c.value,
-                border: `2px solid ${card.color === c.value ? text : 'transparent'}`,
-                cursor: 'pointer', padding: 0, flexShrink: 0,
-                fontSize: 9, color: '#fff', fontFamily: 'var(--font)',
-                transform: card.color === c.value ? 'scale(1.2)' : 'scale(1)',
+                width: 20, height: 20, borderRadius: '50%', cursor: 'pointer',
+                background: c.accent, padding: 0, flexShrink: 0,
+                border: `2px solid ${card.color === c.value ? 'rgba(255,255,255,0.6)' : 'transparent'}`,
+                transform: card.color === c.value ? 'scale(1.25)' : 'scale(1)',
                 transition: 'transform 0.15s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
-            >{c.value === 'default' ? '⌂' : ''}</button>
+            />
           ))}
         </div>
         <button
           onClick={onRemove}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: 0.5, color: text, lineHeight: 1, padding: '0 4px', flexShrink: 0 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, opacity: 0.45, color: '#D4D4D8', padding: '4px', borderRadius: 4, lineHeight: 1 }}
           title="Remover card"
         >🗑</button>
       </div>
 
-      <div style={{ padding: '12px 12px 0' }}>
-        {/* Title input */}
+      {/* Icon + Title */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <input
-          value={card.title}
-          onChange={e => onUpdate({ title: e.target.value })}
-          placeholder="Título (opcional)"
+          value={card.icon || ''}
+          onChange={e => onUpdate({ icon: e.target.value })}
+          placeholder="📌"
           style={{
-            width: '100%', border: 'none', borderBottom: `1px solid ${text}44`,
-            background: 'transparent', fontSize: 14, fontWeight: 700,
-            fontFamily: 'var(--font)', color: text, padding: '0 0 8px',
-            outline: 'none', marginBottom: 10,
+            width: 44, height: 36, background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
+            fontSize: 20, textAlign: 'center', color: '#F4F4F5',
+            fontFamily: 'var(--font)', outline: 'none', padding: 0, flexShrink: 0,
+          }}
+        />
+        <input
+          value={card.title || ''}
+          onChange={e => onUpdate({ title: e.target.value })}
+          placeholder="Título do card"
+          style={{
+            flex: 1, background: 'transparent', border: 'none',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            fontSize: 20, fontWeight: 700, color: '#F4F4F5',
+            fontFamily: 'var(--font)', outline: 'none', padding: '0 0 4px',
           }}
         />
       </div>
 
+      {/* Subtitle */}
+      <input
+        value={card.subtitle || ''}
+        onChange={e => onUpdate({ subtitle: e.target.value })}
+        placeholder="Subtítulo (ex: Graduação · Presencial)"
+        style={{
+          width: '100%', background: 'transparent', border: 'none',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          fontSize: 14, color: '#A1A1AA', fontFamily: 'var(--font)',
+          outline: 'none', padding: '6px 0', marginBottom: 10,
+        }}
+      />
+
+      {/* Badges preview */}
+      {badgesParsed.length > 0 && (
+        <div className="notepad-badges" style={{ marginBottom: 8 }}>
+          {badgesParsed.map((badge, i) => (
+            <span key={i} className="notepad-badge" style={{ color: accent }}>{badge}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Badges input */}
+      <input
+        value={badgesStr}
+        onChange={e => handleBadgesChange(e.target.value)}
+        placeholder="Badges separados por vírgula (ex: Graduação, UNIGRAN)"
+        style={{
+          width: '100%', background: 'rgba(255,255,255,0.03)',
+          border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 8,
+          fontSize: 12, color: '#A1A1AA', fontFamily: 'var(--font)',
+          outline: 'none', padding: '6px 10px', marginBottom: 12,
+        }}
+      />
+
       {/* Rich text toolbar */}
-      <div className="rich-toolbar" style={{ margin: '0 12px', borderRadius: 'var(--r) var(--r) 0 0', marginBottom: 0 }}>
-        <button className="rich-btn rich-bold" title="Negrito" onMouseDown={e => { e.preventDefault(); exec('bold') }}>B</button>
-        <button className="rich-btn rich-italic" title="Itálico" onMouseDown={e => { e.preventDefault(); exec('italic') }}>I</button>
-        <button className="rich-btn rich-underline" title="Sublinhado" onMouseDown={e => { e.preventDefault(); exec('underline') }}>U</button>
-        <span className="rich-divider" />
-        <label className="rich-color-btn" title="Cor do texto">
+      <div className="rich-toolbar rich-toolbar-dark" style={{ borderRadius: 'var(--r) var(--r) 0 0', marginBottom: 0 }}>
+        <button className="rich-btn rich-btn-dark rich-bold" title="Negrito" onMouseDown={e => { e.preventDefault(); exec('bold') }}>B</button>
+        <button className="rich-btn rich-btn-dark rich-italic" title="Itálico" onMouseDown={e => { e.preventDefault(); exec('italic') }}>I</button>
+        <button className="rich-btn rich-btn-dark rich-underline" title="Sublinhado" onMouseDown={e => { e.preventDefault(); exec('underline') }}>U</button>
+        <span className="rich-divider rich-divider-dark" />
+        <label className="rich-color-btn rich-color-btn-dark" title="Cor do texto">
           <span className="rich-color-icon" style={{ borderBottom: '3px solid #e53e3e' }}>A</span>
-          <input type="color" defaultValue="#000000" onChange={e => exec('foreColor', e.target.value)} className="rich-color-input" />
+          <input type="color" defaultValue="#D4D4D8" onChange={e => exec('foreColor', e.target.value)} className="rich-color-input" />
         </label>
-        <label className="rich-color-btn" title="Marca-texto">
-          <span className="rich-color-icon" style={{ background: '#fef08a', padding: '0 2px' }}>ab</span>
+        <label className="rich-color-btn rich-color-btn-dark" title="Marca-texto">
+          <span className="rich-color-icon" style={{ background: '#fef08a', padding: '0 2px', color: '#333' }}>ab</span>
           <input type="color" defaultValue="#fef08a" onChange={e => exec('backColor', e.target.value)} className="rich-color-input" />
         </label>
-        <span className="rich-divider" />
-        <button className="rich-btn" title="Alinhar à esquerda" onMouseDown={e => { e.preventDefault(); exec('justifyLeft') }}>
+        <span className="rich-divider rich-divider-dark" />
+        <button className="rich-btn rich-btn-dark" title="Alinhar à esquerda" onMouseDown={e => { e.preventDefault(); exec('justifyLeft') }}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2"/><rect x="0" y="5" width="9" height="2"/><rect x="0" y="9" width="14" height="2"/><rect x="0" y="13" width="9" height="2"/></svg>
         </button>
-        <button className="rich-btn" title="Centralizar" onMouseDown={e => { e.preventDefault(); exec('justifyCenter') }}>
+        <button className="rich-btn rich-btn-dark" title="Centralizar" onMouseDown={e => { e.preventDefault(); exec('justifyCenter') }}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2"/><rect x="2.5" y="5" width="9" height="2"/><rect x="0" y="9" width="14" height="2"/><rect x="2.5" y="13" width="9" height="2"/></svg>
         </button>
-        <button className="rich-btn" title="Alinhar à direita" onMouseDown={e => { e.preventDefault(); exec('justifyRight') }}>
+        <button className="rich-btn rich-btn-dark" title="Alinhar à direita" onMouseDown={e => { e.preventDefault(); exec('justifyRight') }}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2"/><rect x="5" y="5" width="9" height="2"/><rect x="0" y="9" width="14" height="2"/><rect x="5" y="13" width="9" height="2"/></svg>
         </button>
       </div>
@@ -818,47 +1071,46 @@ function NoteCardEditor({ card, onUpdate, onRemove, onAddTodo, onUpdateTodo, onR
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
-        className="rich-editor"
-        style={{ minHeight: 80, background: bg === '#2c2c2c' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.35)', borderRadius: '0 0 var(--r) var(--r)', fontSize: 14, color: text, margin: '0 12px 12px' }}
+        className="rich-editor rich-editor-dark"
         onInput={handleInput}
+        style={{ minHeight: 100 }}
       />
 
       {/* Todos */}
       {(card.todos || []).length > 0 && (
-        <div style={{ padding: '0 12px', marginBottom: 8 }}>
-          <div style={{ height: 0, borderTop: `1px dashed ${text}33`, marginBottom: 10 }} />
+        <div style={{ marginTop: 12 }}>
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', marginBottom: 10 }} />
           {card.todos.map(todo => (
             <div key={todo.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: text, opacity: 0.5, flexShrink: 0 }}>☐</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>☐</span>
               <input
                 value={todo.text}
                 onChange={e => onUpdateTodo(todo.id, e.target.value)}
                 placeholder="Texto do item..."
                 style={{
-                  flex: 1, border: 'none', borderBottom: `1px solid ${text}33`,
-                  background: 'transparent', fontSize: 13, color: text,
+                  flex: 1, border: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)',
+                  background: 'transparent', fontSize: 13, color: '#D4D4D8',
                   fontFamily: 'var(--font)', outline: 'none', padding: '2px 0',
                 }}
               />
               <button
                 onClick={() => onRemoveTodo(todo.id)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, opacity: 0.4, color: text, padding: 0, lineHeight: 1, flexShrink: 0 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, opacity: 0.4, color: '#D4D4D8', padding: 0, lineHeight: 1, flexShrink: 0 }}
               >×</button>
             </div>
           ))}
         </div>
       )}
 
-      <div style={{ padding: '0 12px 12px' }}>
-        <button
-          onClick={onAddTodo}
-          style={{
-            background: 'none', border: `1px dashed ${text}44`, borderRadius: 6,
-            padding: '4px 12px', fontSize: 12, cursor: 'pointer', opacity: 0.65,
-            fontFamily: 'var(--font)', color: text,
-          }}
-        >+ to-do</button>
-      </div>
+      <button
+        onClick={onAddTodo}
+        style={{
+          marginTop: 12, background: 'none',
+          border: '1px dashed rgba(255,255,255,0.12)', borderRadius: 6,
+          padding: '4px 12px', fontSize: 12, cursor: 'pointer', opacity: 0.7,
+          fontFamily: 'var(--font)', color: '#A1A1AA',
+        }}
+      >+ to-do</button>
     </div>
   )
 }
@@ -870,7 +1122,7 @@ function NotebookEditor({ content, onChange }) {
 
   const addCard = () => onChange({
     ...content,
-    cards: [...cards, { id: `c_${Date.now()}`, title: '', color: 'default', body: '', isHtml: true, todos: [] }]
+    cards: [...cards, { id: `c_${Date.now()}`, icon: '', title: '', subtitle: '', badges: [], color: 'default', body: '', isHtml: true, todos: [] }]
   })
 
   const updateCard = (id, patch) => onChange({
@@ -965,9 +1217,9 @@ function getDefaultContent(type) {
   switch (type) {
     case 'text': return { body: '', isHtml: true }
     case 'checklist': return { subtitle: '', groups: [{ title: 'Grupo 1', items: [] }], closing_tip: '' }
-    case 'table': return { subtitle: '', searchable: true, headers: ['Coluna 1', 'Coluna 2', 'Coluna 3'], rows: [['', '', '']] }
+    case 'table': return { subtitle: '', searchable: true, headers: ['Coluna 1', 'Coluna 2', 'Coluna 3'], rows: [['', '', '']], column_types: ['text', 'text', 'text'] }
     case 'links': return { items: [] }
-    case 'crm_template': return { templates: [] }
+    case 'crm_template': return { templates: [{ label: '📄 Novo template', text: '', category: '', color: 'default' }] }
     case 'notepad': return { instructions: '', cards: [], layout: 'grid' }
     case 'search': return { placeholder: '', search_in: [] }
     default: return {}

@@ -38,13 +38,29 @@ export default function AdminSections({ sections, onRefresh, onSelectSection }) 
     if (!form.title.trim() || !form.slug.trim()) return
     setSaving(true)
 
+    let dbError = null
     if (editing) {
-      await supabase.from('sections').update(form).eq('id', editing.id)
+      const { error } = await supabase.from('sections').update({
+        title: form.title,
+        emoji: form.emoji,
+        slug: form.slug,
+        order_index: form.order_index,
+        show_sidebar: form.show_sidebar,
+        sidebar_position: form.sidebar_position,
+        sidebar_sticky: form.sidebar_sticky,
+      }).eq('id', editing.id)
+      dbError = error
     } else {
-      await supabase.from('sections').insert({ ...form, visible: true })
+      const { error } = await supabase.from('sections').insert({ ...form, visible: true })
+      dbError = error
     }
 
     setSaving(false)
+    if (dbError) {
+      setMsg(`Erro ao salvar: ${dbError.message}`)
+      setTimeout(() => setMsg(''), 5000)
+      return
+    }
     setShowModal(false)
     setMsg(editing ? 'Aba atualizada!' : 'Aba criada!')
     setTimeout(() => setMsg(''), 3000)
@@ -88,7 +104,7 @@ export default function AdminSections({ sections, onRefresh, onSelectSection }) 
         <button className="btn btn-primary" onClick={openNew}>+ Nova Aba</button>
       </div>
 
-      {msg && <div className="alert alert-success">✓ {msg}</div>}
+      {msg && <div className={`alert ${msg.startsWith('Erro') ? 'alert-danger' : 'alert-success'}`}>{msg.startsWith('Erro') ? '✗' : '✓'} {msg}</div>}
 
       <div className="alert alert-info" style={{ marginBottom: 20 }}>
         💡 Clique no nome de uma aba para editar seu conteúdo (blocos de texto, checklists, tabelas etc.)
