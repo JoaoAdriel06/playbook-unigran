@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 function applyHighlight(text, term) {
   if (!term || !text) return String(text || '')
@@ -578,6 +578,175 @@ export function NotebookBlock({ content, blockId }) {
   )
 }
 
+// ---- FLOW BLOCK ----
+function FlowCard({ card }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(card.text || '')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (card.type === 'script') return (
+    <div className="flow-card flow-card-script">
+      <div className="flow-card-header">
+        <span className="flow-card-badge flow-badge-script">📋 Script</span>
+        {card.title && <span className="flow-card-label">{card.title}</span>}
+        <button className={'flow-copy-btn' + (copied ? ' copied' : '')} onClick={handleCopy}>
+          {copied ? '✓ Copiado' : '📋 Copiar'}
+        </button>
+      </div>
+      <div className="flow-script-text">{card.text}</div>
+    </div>
+  )
+
+  if (card.type === 'rules') return (
+    <div className="flow-card flow-card-rules">
+      <div className="flow-card-header">
+        <span className="flow-card-badge flow-badge-rules">📌 Regras</span>
+        {card.title && <span className="flow-card-label">{card.title}</span>}
+      </div>
+      <div className="flow-rules-list">
+        {(card.items || []).map(item => (
+          <div key={item.id} className={'flow-rule-item' + (item.positive ? ' positive' : ' negative')}>
+            <span className="flow-rule-icon">{item.positive ? '✅' : '❌'}</span>
+            <span>{item.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
+  if (card.type === 'tip') return (
+    <div className="flow-card flow-card-tip">
+      <div className="flow-card-header">
+        <span className="flow-card-badge flow-badge-tip">💡 Dica</span>
+        {card.title && <span className="flow-card-label">{card.title}</span>}
+      </div>
+      <div className="flow-card-body">{card.text}</div>
+    </div>
+  )
+
+  if (card.type === 'alert') return (
+    <div className="flow-card flow-card-alert">
+      <div className="flow-card-header">
+        <span className="flow-card-badge flow-badge-alert">⚠️ Atenção</span>
+        {card.title && <span className="flow-card-label">{card.title}</span>}
+      </div>
+      <div className="flow-card-body">{card.text}</div>
+    </div>
+  )
+
+  if (card.type === 'text') return (
+    <div className="flow-card flow-card-text">
+      {card.title && <div className="flow-card-title-large">{card.title}</div>}
+      <div className="flow-card-body" dangerouslySetInnerHTML={{ __html: card.body || '' }} />
+    </div>
+  )
+
+  return null
+}
+
+export function FlowBlock({ content, blockId }) {
+  const { steps = [] } = content
+  const storageKey = `flow_visited_${blockId}`
+  const [activeStep, setActiveStep] = useState(0)
+  const [visited, setVisited] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '[]') }
+    catch { return [] }
+  })
+
+  useEffect(() => {
+    if (steps.length > 0) {
+      const id = steps[0].id
+      if (!visited.includes(id)) {
+        const next = [id, ...visited]
+        setVisited(next)
+        localStorage.setItem(storageKey, JSON.stringify(next))
+      }
+    }
+  }, [blockId])
+
+  const goToStep = (i) => {
+    setActiveStep(i)
+    const id = steps[i]?.id
+    if (id && !visited.includes(id)) {
+      const next = [...visited, id]
+      setVisited(next)
+      localStorage.setItem(storageKey, JSON.stringify(next))
+    }
+  }
+
+  if (!steps.length) return (
+    <div className="empty-state">
+      <div className="empty-state-icon">🗺️</div>
+      <div className="empty-state-text">Nenhuma etapa configurada.</div>
+    </div>
+  )
+
+  const step = steps[activeStep] || steps[0]
+  const visitedCount = steps.filter(s => visited.includes(s.id)).length
+
+  return (
+    <div className="flow-block">
+      <div className="flow-progress-info">
+        <span>Etapa {activeStep + 1} de {steps.length}</span>
+        {visitedCount > 0 && (
+          <span className="flow-visited-badge">{visitedCount}/{steps.length} visitadas</span>
+        )}
+      </div>
+
+      <div className="flow-track">
+        {steps.map((s, i) => {
+          const isActive = i === activeStep
+          const isVisited = visited.includes(s.id) && !isActive
+          return (
+            <div key={s.id} className="flow-track-item">
+              <button
+                className={'flow-step-btn' + (isActive ? ' active' : '') + (isVisited ? ' visited' : '')}
+                onClick={() => goToStep(i)}
+              >
+                <div className="flow-step-circle">
+                  {isVisited ? '✓' : (s.emoji || i + 1)}
+                </div>
+                <span className="flow-step-title">{s.title}</span>
+              </button>
+              {i < steps.length - 1 && (
+                <div className={'flow-track-connector' + (visited.includes(steps[i + 1]?.id) ? ' done' : '')} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="flow-content">
+        <div className="flow-step-header">
+          <div className="flow-step-num">{activeStep + 1}</div>
+          <div className="flow-step-name">{step.emoji && <span>{step.emoji} </span>}{step.title}</div>
+        </div>
+
+        <div className="flow-cards">
+          {(step.cards || []).length === 0 ? (
+            <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhum card nesta etapa.</p>
+          ) : (
+            (step.cards || []).map(card => <FlowCard key={card.id} card={card} />)
+          )}
+        </div>
+
+        <div className="flow-nav-btns">
+          <button className="btn btn-secondary" disabled={activeStep === 0} onClick={() => goToStep(activeStep - 1)}>
+            ← Anterior
+          </button>
+          <button className="btn btn-primary" disabled={activeStep === steps.length - 1} onClick={() => goToStep(activeStep + 1)}>
+            Próxima etapa →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ---- SEARCH BLOCK ----
 function extractBlockText(block) {
   const { type, title = '', content } = block
@@ -690,6 +859,7 @@ export function BlockRenderer({ block, allBlocks, onNavigate, highlightTerm = ''
       case 'crm_template': return <CrmTemplateBlock content={content} highlightTerm={highlightTerm} />
       case 'notepad':      return <NotebookBlock content={content} blockId={id} />
       case 'search':       return <SearchBlock content={content} blockId={id} allBlocks={allBlocks} onNavigate={onNavigate} />
+      case 'flow':         return <FlowBlock content={content} blockId={id} />
       default:             return <p style={{ color: 'var(--text-3)' }}>Tipo de bloco desconhecido: {type}</p>
     }
   }

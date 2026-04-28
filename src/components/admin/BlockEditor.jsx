@@ -9,6 +9,7 @@ const BLOCK_TYPES = [
   { value: 'crm_template', label: '📋 Templates CRM', desc: 'Templates de texto copiável com 1 clique. Ideal para notas do RD Station.' },
   { value: 'notepad', label: '🗒️ Bloco de Notas', desc: 'Cards de anotações com texto, cor e to-do. Conteúdo gerenciado pelo admin.' },
   { value: 'search', label: '🔍 Bloco de Busca', desc: 'Campo de busca que pesquisa conteúdo de outros blocos da mesma página.' },
+  { value: 'flow', label: '🗺️ Playbook de Fluxo', desc: 'Etapas interativas com scripts, regras e dicas. Ideal para processos de atendimento.' },
 ]
 
 export default function BlockEditor({ block, sectionTitle, onSave, onCancel }) {
@@ -113,6 +114,9 @@ export default function BlockEditor({ block, sectionTitle, onSave, onCancel }) {
       )}
       {type === 'search' && (
         <SearchEditor content={content} onChange={setContent} />
+      )}
+      {type === 'flow' && (
+        <FlowEditor content={content} onChange={setContent} />
       )}
     </div>
   )
@@ -1235,11 +1239,199 @@ function NotebookEditor({ content, onChange }) {
   )
 }
 
+// ---- FLOW EDITOR ----
+const CARD_TYPES = [
+  { value: 'script', label: '📋 Script' },
+  { value: 'rules',  label: '📌 Regras' },
+  { value: 'tip',    label: '💡 Dica' },
+  { value: 'alert',  label: '⚠️ Atenção' },
+  { value: 'text',   label: '📝 Texto' },
+]
+
+function FlowEditor({ content, onChange }) {
+  const steps = content.steps || []
+  const [expandedStep, setExpandedStep] = useState(null)
+
+  const setSteps = (s) => onChange({ ...content, steps: s })
+
+  const addStep = () => {
+    const newStep = { id: `step_${Date.now()}`, title: 'Nova Etapa', emoji: '📌', cards: [] }
+    const next = [...steps, newStep]
+    setSteps(next)
+    setExpandedStep(next.length - 1)
+  }
+
+  const updateStep = (si, key, val) => {
+    const s = [...steps]; s[si] = { ...s[si], [key]: val }; setSteps(s)
+  }
+
+  const removeStep = (si) => {
+    const s = [...steps]; s.splice(si, 1); setSteps(s)
+    setExpandedStep(v => (v >= si ? Math.max(0, v - 1) : v))
+  }
+
+  const addCard = (si, type) => {
+    const base = { id: `card_${Date.now()}`, type, title: '' }
+    if (type === 'rules') base.items = []
+    else if (type === 'text') base.body = ''
+    else base.text = ''
+    const s = [...steps]
+    s[si] = { ...s[si], cards: [...(s[si].cards || []), base] }
+    setSteps(s)
+  }
+
+  const updateCard = (si, ci, updates) => {
+    const s = [...steps]
+    s[si].cards[ci] = { ...s[si].cards[ci], ...updates }
+    setSteps(s)
+  }
+
+  const removeCard = (si, ci) => {
+    const s = [...steps]; s[si].cards.splice(ci, 1); setSteps(s)
+  }
+
+  const addRule = (si, ci) => {
+    const s = [...steps]
+    s[si].cards[ci].items = [...(s[si].cards[ci].items || []), { id: `r_${Date.now()}`, positive: true, text: '' }]
+    setSteps(s)
+  }
+
+  const updateRule = (si, ci, ri, key, val) => {
+    const s = [...steps]; s[si].cards[ci].items[ri] = { ...s[si].cards[ci].items[ri], [key]: val }; setSteps(s)
+  }
+
+  const removeRule = (si, ci, ri) => {
+    const s = [...steps]; s[si].cards[ci].items.splice(ri, 1); setSteps(s)
+  }
+
+  return (
+    <div className="card">
+      <div className="card-title">🗺️ Editor de Playbook</div>
+      <p style={{ color: 'var(--text-3)', fontSize: 13, marginBottom: 20 }}>
+        Crie as etapas do processo. Dentro de cada etapa, adicione cards de script, regras, dicas, etc.
+      </p>
+
+      {steps.map((step, si) => (
+        <div key={step.id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', marginBottom: 10, overflow: 'hidden' }}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--bg-3)', cursor: 'pointer' }}
+            onClick={() => setExpandedStep(expandedStep === si ? null : si)}
+          >
+            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 13, flexShrink: 0, minWidth: 18 }}>{si + 1}</span>
+            <input
+              className="form-input"
+              value={step.emoji || ''}
+              onChange={e => updateStep(si, 'emoji', e.target.value)}
+              placeholder="emoji"
+              style={{ width: 46, flexShrink: 0, textAlign: 'center' }}
+              onClick={e => e.stopPropagation()}
+            />
+            <input
+              className="form-input"
+              value={step.title}
+              onChange={e => updateStep(si, 'title', e.target.value)}
+              placeholder="Título da etapa"
+              style={{ flex: 1 }}
+              onClick={e => e.stopPropagation()}
+            />
+            <span style={{ color: 'var(--text-3)', fontSize: 11, flexShrink: 0 }}>{(step.cards || []).length} card(s)</span>
+            <button className="btn btn-danger btn-sm" onClick={e => { e.stopPropagation(); removeStep(si) }}>🗑</button>
+            <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{expandedStep === si ? '▲' : '▼'}</span>
+          </div>
+
+          {expandedStep === si && (
+            <div style={{ padding: 16 }}>
+              {(step.cards || []).map((card, ci) => (
+                <div key={card.id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 14, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+                      {CARD_TYPES.find(t => t.value === card.type)?.label || card.type}
+                    </span>
+                    <input
+                      className="form-input"
+                      value={card.title || ''}
+                      onChange={e => updateCard(si, ci, { title: e.target.value })}
+                      placeholder="Título do card (opcional)"
+                      style={{ flex: 1 }}
+                    />
+                    <button className="btn btn-ghost btn-sm" onClick={() => removeCard(si, ci)}>×</button>
+                  </div>
+
+                  {(card.type === 'script' || card.type === 'tip' || card.type === 'alert') && (
+                    <textarea
+                      className="form-input"
+                      value={card.text || ''}
+                      onChange={e => updateCard(si, ci, { text: e.target.value })}
+                      placeholder={card.type === 'script' ? 'Texto do script (exatamente como será copiado)...' : card.type === 'tip' ? 'Dica rápida...' : 'Descrição do alerta...'}
+                      rows={4}
+                      style={{ resize: 'vertical', fontFamily: 'var(--font)', fontSize: 13 }}
+                    />
+                  )}
+
+                  {card.type === 'text' && (
+                    <textarea
+                      className="form-input"
+                      value={card.body || ''}
+                      onChange={e => updateCard(si, ci, { body: e.target.value })}
+                      placeholder="Texto livre (suporta HTML básico)"
+                      rows={4}
+                      style={{ resize: 'vertical', fontFamily: 'var(--font)', fontSize: 13 }}
+                    />
+                  )}
+
+                  {card.type === 'rules' && (
+                    <div>
+                      {(card.items || []).map((item, ri) => (
+                        <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => updateRule(si, ci, ri, 'positive', !item.positive)}
+                            style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', flexShrink: 0 }}
+                            title="Clique para alternar ✅/❌"
+                          >{item.positive ? '✅' : '❌'}</button>
+                          <input
+                            className="form-input"
+                            value={item.text}
+                            onChange={e => updateRule(si, ci, ri, 'text', e.target.value)}
+                            placeholder="Descrição da regra..."
+                            style={{ flex: 1 }}
+                          />
+                          <button className="btn btn-ghost btn-sm" onClick={() => removeRule(si, ci, ri)}>×</button>
+                        </div>
+                      ))}
+                      <button className="btn btn-secondary btn-sm" onClick={() => addRule(si, ci)} style={{ marginTop: 4 }}>
+                        + Adicionar regra
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 4 }}>
+                {CARD_TYPES.map(ct => (
+                  <button key={ct.value} className="btn btn-secondary btn-sm" onClick={() => addCard(si, ct.value)}>
+                    + {ct.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button className="btn btn-secondary" onClick={addStep} style={{ marginTop: 8 }}>
+        + Adicionar etapa
+      </button>
+    </div>
+  )
+}
+
 // ---- DEFAULTS ----
 function getDefaultContent(type) {
   switch (type) {
     case 'text': return { body: '', isHtml: true }
     case 'checklist': return { subtitle: '', groups: [{ title: 'Grupo 1', items: [] }], gestor_groups: [], closing_tip: '' }
+    case 'flow': return { steps: [{ id: `step_${Date.now()}`, title: 'Etapa 1', emoji: '👋', cards: [] }] }
     case 'table': return { subtitle: '', searchable: true, headers: ['Coluna 1', 'Coluna 2', 'Coluna 3'], rows: [['', '', '']], column_types: ['text', 'text', 'text'] }
     case 'links': return { items: [] }
     case 'crm_template': return { templates: [{ label: '📄 Novo template', text: '', category: '', color: 'default' }] }
