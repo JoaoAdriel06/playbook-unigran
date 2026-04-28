@@ -645,7 +645,18 @@ function FlowCard({ card }) {
 
 export function FlowBlock({ content, blockId }) {
   const { steps = [] } = content
-  const storageKey = `flow_visited_${blockId}`
+
+  const userType = sessionStorage.getItem('admin_auth')  === 'true' ? 'admin'
+    : sessionStorage.getItem('gestor_auth') === 'true' ? 'gestor'
+    : 'user'
+
+  const canSee = (v) => !v || v === 'all' || userType === 'admin'
+    || (v === 'gestor' && userType === 'gestor')
+    || (v === 'user'   && userType === 'user')
+
+  const visibleSteps = steps.filter(s => canSee(s.visibility))
+
+  const storageKey = `flow_visited_${blockId}_${userType}`
   const layoutKey  = `flow_layout_${blockId}`
   const [activeStep, setActiveStep] = useState(0)
   const [layout, setLayout] = useState(() => localStorage.getItem(layoutKey) || 'stack')
@@ -655,8 +666,8 @@ export function FlowBlock({ content, blockId }) {
   })
 
   useEffect(() => {
-    if (steps.length > 0) {
-      const id = steps[0].id
+    if (visibleSteps.length > 0) {
+      const id = visibleSteps[0].id
       if (!visited.includes(id)) {
         const next = [id, ...visited]
         setVisited(next)
@@ -667,7 +678,7 @@ export function FlowBlock({ content, blockId }) {
 
   const goToStep = (i) => {
     setActiveStep(i)
-    const id = steps[i]?.id
+    const id = visibleSteps[i]?.id
     if (id && !visited.includes(id)) {
       const next = [...visited, id]
       setVisited(next)
@@ -680,27 +691,28 @@ export function FlowBlock({ content, blockId }) {
     localStorage.setItem(layoutKey, val)
   }
 
-  if (!steps.length) return (
+  if (!visibleSteps.length) return (
     <div className="empty-state">
       <div className="empty-state-icon">🗺️</div>
       <div className="empty-state-text">Nenhuma etapa configurada.</div>
     </div>
   )
 
-  const step = steps[activeStep] || steps[0]
-  const visitedCount = steps.filter(s => visited.includes(s.id)).length
+  const step = visibleSteps[activeStep] || visibleSteps[0]
+  const visibleCards = (step.cards || []).filter(c => canSee(c.visibility))
+  const visitedCount = visibleSteps.filter(s => visited.includes(s.id)).length
 
   return (
     <div className="flow-block">
       <div className="flow-progress-info">
-        <span>Etapa {activeStep + 1} de {steps.length}</span>
+        <span>Etapa {activeStep + 1} de {visibleSteps.length}</span>
         {visitedCount > 0 && (
-          <span className="flow-visited-badge">{visitedCount}/{steps.length} visitadas</span>
+          <span className="flow-visited-badge">{visitedCount}/{visibleSteps.length} visitadas</span>
         )}
       </div>
 
       <div className="flow-track">
-        {steps.map((s, i) => {
+        {visibleSteps.map((s, i) => {
           const isActive = i === activeStep
           const isVisited = visited.includes(s.id) && !isActive
           return (
@@ -714,8 +726,8 @@ export function FlowBlock({ content, blockId }) {
                 </div>
                 <span className="flow-step-title">{s.title}</span>
               </button>
-              {i < steps.length - 1 && (
-                <div className={'flow-track-connector' + (visited.includes(steps[i + 1]?.id) ? ' done' : '')} />
+              {i < visibleSteps.length - 1 && (
+                <div className={'flow-track-connector' + (visited.includes(visibleSteps[i + 1]?.id) ? ' done' : '')} />
               )}
             </div>
           )
@@ -732,12 +744,11 @@ export function FlowBlock({ content, blockId }) {
           </div>
         </div>
 
-        {/* key={activeStep} resets accordion state when step changes */}
         <div key={activeStep} className={'flow-cards' + (layout === 'grid' ? ' grid' : '')}>
-          {(step.cards || []).length === 0 ? (
+          {visibleCards.length === 0 ? (
             <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhum card nesta etapa.</p>
           ) : (
-            (step.cards || []).map(card => <FlowCard key={card.id} card={card} />)
+            visibleCards.map(card => <FlowCard key={card.id} card={card} />)
           )}
         </div>
 
@@ -745,7 +756,7 @@ export function FlowBlock({ content, blockId }) {
           <button className="btn btn-secondary" disabled={activeStep === 0} onClick={() => goToStep(activeStep - 1)}>
             ← Anterior
           </button>
-          <button className="btn btn-primary" disabled={activeStep === steps.length - 1} onClick={() => goToStep(activeStep + 1)}>
+          <button className="btn btn-primary" disabled={activeStep === visibleSteps.length - 1} onClick={() => goToStep(activeStep + 1)}>
             Próxima etapa →
           </button>
         </div>

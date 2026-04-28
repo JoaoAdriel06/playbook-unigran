@@ -1334,6 +1334,17 @@ function FlowEditor({ content, onChange }) {
               style={{ flex: 1 }}
               onClick={e => e.stopPropagation()}
             />
+            <select
+              className="form-input"
+              value={step.visibility || 'all'}
+              onChange={e => updateStep(si, 'visibility', e.target.value)}
+              style={{ width: 118, flexShrink: 0, fontSize: 11 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <option value="all">👥 Todos</option>
+              <option value="user">👤 Usuário</option>
+              <option value="gestor">🔑 Gestor</option>
+            </select>
             <span style={{ color: 'var(--text-3)', fontSize: 11, flexShrink: 0 }}>{(step.cards || []).length} card(s)</span>
             <button className="btn btn-danger btn-sm" onClick={e => { e.stopPropagation(); removeStep(si) }}>🗑</button>
             <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{expandedStep === si ? '▲' : '▼'}</span>
@@ -1354,6 +1365,16 @@ function FlowEditor({ content, onChange }) {
                       placeholder="Título do card (opcional)"
                       style={{ flex: 1 }}
                     />
+                    <select
+                      className="form-input"
+                      value={card.visibility || 'all'}
+                      onChange={e => updateCard(si, ci, { visibility: e.target.value })}
+                      style={{ width: 112, flexShrink: 0, fontSize: 11 }}
+                    >
+                      <option value="all">👥 Todos</option>
+                      <option value="user">👤 Usuário</option>
+                      <option value="gestor">🔑 Gestor</option>
+                    </select>
                     <button className="btn btn-ghost btn-sm" onClick={() => removeCard(si, ci)}>×</button>
                   </div>
 
