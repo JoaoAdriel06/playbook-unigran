@@ -1628,22 +1628,42 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   color: var(--text);
 }
 
-/* Cards */
-.flow-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
-
-.flow-card {
-  border-radius: var(--r-lg);
-  padding: 16px;
-  border: 1px solid var(--border);
+/* Cards container */
+.flow-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+.flow-cards.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
 }
 
-.flow-card-header {
+/* Card base — accordion */
+.flow-card {
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* Accordion toggle button */
+.flow-card-toggle {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+  padding: 11px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  transition: background 0.15s;
 }
+.flow-card-toggle:hover { background: rgba(255,255,255,0.03); }
+.flow-card.open .flow-card-toggle { background: rgba(255,255,255,0.03); }
 
 .flow-card-badge {
   font-size: 10px;
@@ -1658,34 +1678,45 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .flow-badge-rules  { background: rgba(34,197,94,0.12);  color: #86efac; }
 .flow-badge-tip    { background: rgba(240,173,78,0.15);  color: var(--accent); }
 .flow-badge-alert  { background: rgba(239,68,68,0.12);   color: #fca5a5; }
+.flow-badge-text   { background: rgba(255,255,255,0.06); color: var(--text-3); }
 
 .flow-card-label {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-2);
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flow-chevron { margin-left: auto; color: var(--text-3); font-size: 9px; flex-shrink: 0; }
+
+/* Expanded content */
+.flow-card-body-inner {
+  padding: 0 14px 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  padding-top: 13px;
 }
 
-/* Script */
-.flow-card-script {
-  background: #0e0e0e;
-  border-color: rgba(99,102,241,0.2);
-}
+/* Script card */
+.flow-card-script { background: #0e0e0e; border-color: rgba(99,102,241,0.2); }
+.flow-card-script .flow-card-toggle { border-bottom: 1px solid rgba(99,102,241,0.1); }
 .flow-script-text {
   font-size: 14px;
   line-height: 1.75;
   color: var(--text);
   white-space: pre-wrap;
   font-family: var(--font);
+  margin-bottom: 12px;
 }
 .flow-copy-btn {
-  margin-left: auto;
-  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
   background: rgba(99,102,241,0.1);
   border: 1px solid rgba(99,102,241,0.3);
   color: #a5b4fc;
   border-radius: var(--r);
-  padding: 4px 13px;
+  padding: 5px 14px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -1696,40 +1727,58 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .flow-copy-btn:hover  { background: rgba(99,102,241,0.2); }
 .flow-copy-btn.copied { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.3); color: #86efac; }
 
-/* Rules */
-.flow-card-rules {
-  background: rgba(34,197,94,0.03);
-  border-color: rgba(34,197,94,0.15);
-}
+/* Rules card */
+.flow-card-rules { background: rgba(34,197,94,0.03); border-color: rgba(34,197,94,0.15); }
 .flow-rules-list { display: flex; flex-direction: column; gap: 8px; }
 .flow-rule-item  { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text-2); line-height: 1.5; }
 .flow-rule-item.positive { color: #86efac; }
 .flow-rule-item.negative { color: #fca5a5; }
 .flow-rule-icon  { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
 
-/* Tip */
+/* Tip card */
 .flow-card-tip {
   border-left: 3px solid var(--accent);
   background: rgba(240,173,78,0.04);
-  border-top-color: rgba(240,173,78,0.2);
-  border-right-color: rgba(240,173,78,0.2);
-  border-bottom-color: rgba(240,173,78,0.2);
+  border-top-color: rgba(240,173,78,0.18);
+  border-right-color: rgba(240,173,78,0.18);
+  border-bottom-color: rgba(240,173,78,0.18);
 }
-
-/* Alert */
+/* Alert card */
 .flow-card-alert {
   border-left: 3px solid #ef4444;
   background: rgba(239,68,68,0.04);
-  border-top-color: rgba(239,68,68,0.2);
-  border-right-color: rgba(239,68,68,0.2);
-  border-bottom-color: rgba(239,68,68,0.2);
+  border-top-color: rgba(239,68,68,0.18);
+  border-right-color: rgba(239,68,68,0.18);
+  border-bottom-color: rgba(239,68,68,0.18);
 }
+/* Text card */
+.flow-card-text { background: var(--bg-3); }
 
 .flow-card-body { font-size: 14px; line-height: 1.7; color: var(--text-2); }
 
-/* Text card */
-.flow-card-text { background: var(--bg-3); }
-.flow-card-title-large { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+/* Layout toggle */
+.flow-layout-toggle { display: flex; gap: 4px; margin-left: auto; }
+.flow-layout-btn {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  border-radius: var(--r);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.15s;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+.flow-layout-btn.active {
+  background: rgba(240,173,78,0.1);
+  border-color: rgba(240,173,78,0.3);
+  color: var(--accent);
+}
 
 /* Nav buttons */
 .flow-nav-btns {

@@ -579,35 +579,37 @@ export function NotebookBlock({ content, blockId }) {
 }
 
 // ---- FLOW BLOCK ----
-function FlowCard({ card }) {
-  const [copied, setCopied] = useState(false)
+const FLOW_BADGE = {
+  script: { label: '📋 Script', cls: 'flow-badge-script' },
+  rules:  { label: '📌 Regras', cls: 'flow-badge-rules' },
+  tip:    { label: '💡 Dica',   cls: 'flow-badge-tip' },
+  alert:  { label: '⚠️ Atenção', cls: 'flow-badge-alert' },
+  text:   { label: '📝 Texto',  cls: 'flow-badge-text' },
+}
 
-  const handleCopy = () => {
+function FlowCard({ card }) {
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const badge = FLOW_BADGE[card.type] || { label: card.type, cls: '' }
+
+  const handleCopy = (e) => {
+    e.stopPropagation()
     navigator.clipboard.writeText(card.text || '')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (card.type === 'script') return (
-    <div className="flow-card flow-card-script">
-      <div className="flow-card-header">
-        <span className="flow-card-badge flow-badge-script">📋 Script</span>
-        {card.title && <span className="flow-card-label">{card.title}</span>}
+  const renderContent = () => {
+    if (card.type === 'script') return (
+      <div className="flow-card-body-inner">
+        <div className="flow-script-text">{card.text}</div>
         <button className={'flow-copy-btn' + (copied ? ' copied' : '')} onClick={handleCopy}>
-          {copied ? '✓ Copiado' : '📋 Copiar'}
+          {copied ? '✓ Copiado' : '📋 Copiar texto'}
         </button>
       </div>
-      <div className="flow-script-text">{card.text}</div>
-    </div>
-  )
-
-  if (card.type === 'rules') return (
-    <div className="flow-card flow-card-rules">
-      <div className="flow-card-header">
-        <span className="flow-card-badge flow-badge-rules">📌 Regras</span>
-        {card.title && <span className="flow-card-label">{card.title}</span>}
-      </div>
-      <div className="flow-rules-list">
+    )
+    if (card.type === 'rules') return (
+      <div className="flow-card-body-inner flow-rules-list">
         {(card.items || []).map(item => (
           <div key={item.id} className={'flow-rule-item' + (item.positive ? ' positive' : ' negative')}>
             <span className="flow-rule-icon">{item.positive ? '✅' : '❌'}</span>
@@ -615,43 +617,38 @@ function FlowCard({ card }) {
           </div>
         ))}
       </div>
-    </div>
-  )
-
-  if (card.type === 'tip') return (
-    <div className="flow-card flow-card-tip">
-      <div className="flow-card-header">
-        <span className="flow-card-badge flow-badge-tip">💡 Dica</span>
-        {card.title && <span className="flow-card-label">{card.title}</span>}
+    )
+    if (card.type === 'tip' || card.type === 'alert') return (
+      <div className="flow-card-body-inner">
+        <div className="flow-card-body">{card.text}</div>
       </div>
-      <div className="flow-card-body">{card.text}</div>
-    </div>
-  )
-
-  if (card.type === 'alert') return (
-    <div className="flow-card flow-card-alert">
-      <div className="flow-card-header">
-        <span className="flow-card-badge flow-badge-alert">⚠️ Atenção</span>
-        {card.title && <span className="flow-card-label">{card.title}</span>}
+    )
+    if (card.type === 'text') return (
+      <div className="flow-card-body-inner">
+        <div className="flow-card-body" dangerouslySetInnerHTML={{ __html: card.body || '' }} />
       </div>
-      <div className="flow-card-body">{card.text}</div>
+    )
+    return null
+  }
+
+  return (
+    <div className={`flow-card flow-card-${card.type}` + (open ? ' open' : '')}>
+      <button className="flow-card-toggle" onClick={() => setOpen(v => !v)}>
+        <span className={`flow-card-badge ${badge.cls}`}>{badge.label}</span>
+        {card.title && <span className="flow-card-label">{card.title}</span>}
+        <span className="flow-chevron">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && renderContent()}
     </div>
   )
-
-  if (card.type === 'text') return (
-    <div className="flow-card flow-card-text">
-      {card.title && <div className="flow-card-title-large">{card.title}</div>}
-      <div className="flow-card-body" dangerouslySetInnerHTML={{ __html: card.body || '' }} />
-    </div>
-  )
-
-  return null
 }
 
 export function FlowBlock({ content, blockId }) {
   const { steps = [] } = content
   const storageKey = `flow_visited_${blockId}`
+  const layoutKey  = `flow_layout_${blockId}`
   const [activeStep, setActiveStep] = useState(0)
+  const [layout, setLayout] = useState(() => localStorage.getItem(layoutKey) || 'stack')
   const [visited, setVisited] = useState(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || '[]') }
     catch { return [] }
@@ -676,6 +673,11 @@ export function FlowBlock({ content, blockId }) {
       setVisited(next)
       localStorage.setItem(storageKey, JSON.stringify(next))
     }
+  }
+
+  const toggleLayout = (val) => {
+    setLayout(val)
+    localStorage.setItem(layoutKey, val)
   }
 
   if (!steps.length) return (
@@ -724,9 +726,14 @@ export function FlowBlock({ content, blockId }) {
         <div className="flow-step-header">
           <div className="flow-step-num">{activeStep + 1}</div>
           <div className="flow-step-name">{step.emoji && <span>{step.emoji} </span>}{step.title}</div>
+          <div className="flow-layout-toggle">
+            <button className={'flow-layout-btn' + (layout === 'stack' ? ' active' : '')} onClick={() => toggleLayout('stack')} title="Coluna">☰</button>
+            <button className={'flow-layout-btn' + (layout === 'grid'  ? ' active' : '')} onClick={() => toggleLayout('grid')}  title="Grade">⊞</button>
+          </div>
         </div>
 
-        <div className="flow-cards">
+        {/* key={activeStep} resets accordion state when step changes */}
+        <div key={activeStep} className={'flow-cards' + (layout === 'grid' ? ' grid' : '')}>
           {(step.cards || []).length === 0 ? (
             <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhum card nesta etapa.</p>
           ) : (
