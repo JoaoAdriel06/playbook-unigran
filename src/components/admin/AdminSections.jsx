@@ -10,13 +10,13 @@ export default function AdminSections({ sections, onRefresh, onSelectSection }) 
 
   const openNew = () => {
     setEditing(null)
-    setForm({ title: '', emoji: '📄', slug: '', order_index: sections.length + 1, show_sidebar: false, sidebar_position: 'left', sidebar_sticky: false })
+    setForm({ title: '', emoji: '📄', slug: '', order_index: sections.length + 1, show_sidebar: false, sidebar_position: 'left', sidebar_sticky: false, access: 'all' })
     setShowModal(true)
   }
 
   const openEdit = (s) => {
     setEditing(s)
-    setForm({ title: s.title, emoji: s.emoji, slug: s.slug, order_index: s.order_index, show_sidebar: !!s.show_sidebar, sidebar_position: s.sidebar_position || 'left', sidebar_sticky: !!s.sidebar_sticky })
+    setForm({ title: s.title, emoji: s.emoji, slug: s.slug, order_index: s.order_index, show_sidebar: !!s.show_sidebar, sidebar_position: s.sidebar_position || 'left', sidebar_sticky: !!s.sidebar_sticky, access: s.access || 'all' })
     setShowModal(true)
   }
 
@@ -48,6 +48,7 @@ export default function AdminSections({ sections, onRefresh, onSelectSection }) 
         show_sidebar: form.show_sidebar,
         sidebar_position: form.sidebar_position,
         sidebar_sticky: form.sidebar_sticky,
+        access: form.access || 'all',
       }).eq('id', editing.id)
       dbError = error
     } else {
@@ -122,6 +123,8 @@ export default function AdminSections({ sections, onRefresh, onSelectSection }) 
             <div className="section-item-slug">/{s.slug}</div>
           </div>
           <div className="section-item-actions">
+            {s.access === 'user'   && <span className="badge badge-gray">👤 Usuário</span>}
+            {s.access === 'gestor' && <span className="badge badge-gray">🔑 Gestor</span>}
             {s.show_sidebar && (
               <span className="badge badge-gray" title="Barra lateral ativa">☰ sidebar</span>
             )}
@@ -172,6 +175,27 @@ export default function AdminSections({ sections, onRefresh, onSelectSection }) 
               />
               <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 5 }}>
                 O site abrirá em /{form.slug || '...'}
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Visibilidade</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                  { value: 'all',    label: '👥 Todos' },
+                  { value: 'user',   label: '👤 Usuário' },
+                  { value: 'gestor', label: '🔑 Gestor' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={'btn btn-sm ' + (form.access === opt.value ? 'btn-primary' : 'btn-secondary')}
+                    onClick={() => setForm(f => ({ ...f, access: opt.value }))}
+                  >{opt.label}</button>
+                ))}
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 5 }}>
+                Define quem pode ver e acessar esta aba.
               </p>
             </div>
 

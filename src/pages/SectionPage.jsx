@@ -44,6 +44,18 @@ export default function SectionPage({ slug: slugProp }) {
         return
       }
 
+      const isAdmin  = sessionStorage.getItem('admin_auth')  === 'true'
+      const isGestor = sessionStorage.getItem('gestor_auth') === 'true'
+      const a = sec.access || 'all'
+      const canAccess = a === 'all' || isAdmin
+        || (a === 'gestor' && isGestor)
+        || (a === 'user'   && !isGestor && !isAdmin)
+      if (!canAccess) {
+        setError('Você não tem acesso a esta seção.')
+        setLoading(false)
+        return
+      }
+
       const { data: blks } = await supabase
         .from('blocks')
         .select('*')

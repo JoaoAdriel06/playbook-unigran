@@ -31,12 +31,20 @@ export default function Nav() {
   useEffect(() => {
     supabase
       .from('sections')
-      .select('id, title, emoji, slug, order_index')
+      .select('id, title, emoji, slug, order_index, access')
       .eq('visible', true)
       .order('order_index')
       .then(({ data }) => {
         if (!data) return
-        setSections(data)
+        const filtered = data.filter(s => {
+          const a = s.access || 'all'
+          if (a === 'all') return true
+          if (isAdmin) return true
+          if (a === 'user')   return !isGestor
+          if (a === 'gestor') return isGestor
+          return true
+        })
+        setSections(filtered)
 
         if (!needsLock) return
 
