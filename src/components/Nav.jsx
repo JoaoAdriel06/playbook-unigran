@@ -121,6 +121,12 @@ export default function Nav() {
       <button className="nav-admin-btn" onClick={() => navigate('/admin/login')}>
         ⚙ Admin
       </button>
+      <button className="nav-admin-btn" onClick={() => {
+        sessionStorage.clear()
+        navigate('/login')
+      }}>
+        ⇠ Sair
+      </button>
     </nav>
   )
 }
