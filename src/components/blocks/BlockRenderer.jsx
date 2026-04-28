@@ -158,10 +158,14 @@ export function TextBlock({ content, highlightTerm }) {
 
 // ---- CHECKLIST BLOCK ----
 export function ChecklistBlock({ content, blockId, highlightTerm }) {
-  const { groups = [], subtitle, closing_tip } = content
-  const allItems = groups.flatMap(g => g.items)
-  const storageKey = `checklist_${blockId}`
-  const linksKey = `checklist_links_${blockId}`
+  const { subtitle, closing_tip } = content
+  const isGestor = sessionStorage.getItem('gestor_auth') === 'true'
+  const groups = (isGestor && content.gestor_groups?.length > 0)
+    ? content.gestor_groups
+    : (content.groups || [])
+  const allItems = groups.flatMap(g => g.items || [])
+  const storageKey = isGestor ? `checklist_gestor_${blockId}` : `checklist_${blockId}`
+  const linksKey = isGestor ? `checklist_links_gestor_${blockId}` : `checklist_links_${blockId}`
 
   const [checked, setChecked] = useState(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || '{}') }
@@ -185,6 +189,7 @@ export function ChecklistBlock({ content, blockId, highlightTerm }) {
     const next = { ...checked, [item.id]: !checked[item.id] }
     setChecked(next)
     localStorage.setItem(storageKey, JSON.stringify(next))
+    if (!isGestor) window.dispatchEvent(new CustomEvent('checklist-update'))
   }
 
   const reset = () => {
@@ -192,6 +197,7 @@ export function ChecklistBlock({ content, blockId, highlightTerm }) {
     setLinkClicked({})
     localStorage.removeItem(storageKey)
     localStorage.removeItem(linksKey)
+    if (!isGestor) window.dispatchEvent(new CustomEvent('checklist-update'))
   }
 
   const done = allItems.filter(i => checked[i.id]).length
@@ -216,7 +222,7 @@ export function ChecklistBlock({ content, blockId, highlightTerm }) {
           <div key={gi} className="checklist-group">
             <div className="checklist-group-title">{group.title}</div>
             {group.tip && <div className="tip-box">{group.tip}</div>}
-            {group.items.map(item => {
+            {(group.items || []).map(item => {
               const isDone = !!checked[item.id]
               const hasLink = !!item.url
               const clicked = hasLink && !!linkClicked[item.id]

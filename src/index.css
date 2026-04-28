@@ -177,6 +177,50 @@ body::before {
   color: var(--accent);
 }
 
+.nav-link-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 11px;
+  border-radius: var(--r);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-3);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: 78px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: default;
+  opacity: 0.4;
+  font-family: var(--font);
+}
+
+.nav-lock-icon {
+  font-size: 9px;
+  line-height: 1;
+}
+
+.nav-lock-toast {
+  position: fixed;
+  top: calc(var(--nav-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 12px 20px;
+  border-radius: var(--r);
+  font-size: 13px;
+  z-index: 999;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
 .nav-admin-btn {
   margin-left: auto;
   flex-shrink: 0;

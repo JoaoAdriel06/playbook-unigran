@@ -294,48 +294,71 @@ const TextEditor = forwardRef(function TextEditor({ content, onChange }, ref) {
 
 // ---- CHECKLIST EDITOR ----
 function ChecklistEditor({ content, onChange }) {
-  const groups = content.groups || []
+  const [activeView, setActiveView] = useState('user')
 
-  const addGroup = () => {
-    onChange({
-      ...content,
-      groups: [...groups, { title: 'Novo grupo', items: [] }]
-    })
-  }
+  const groupsKey = activeView === 'user' ? 'groups' : 'gestor_groups'
+  const groups = content[groupsKey] || []
+
+  const setGroups = (newGroups) => onChange({ ...content, [groupsKey]: newGroups })
+
+  const addGroup = () => setGroups([...groups, { title: 'Novo grupo', items: [] }])
 
   const updateGroup = (gi, key, val) => {
     const g = [...groups]
     g[gi] = { ...g[gi], [key]: val }
-    onChange({ ...content, groups: g })
+    setGroups(g)
   }
 
   const addItem = (gi) => {
     const g = [...groups]
     g[gi].items = [...(g[gi].items || []), { id: `item_${Date.now()}`, label: '', url: '' }]
-    onChange({ ...content, groups: g })
+    setGroups(g)
   }
 
   const updateItem = (gi, ii, key, val) => {
     const g = [...groups]
     g[gi].items[ii] = { ...g[gi].items[ii], [key]: val }
-    onChange({ ...content, groups: g })
+    setGroups(g)
   }
 
   const removeItem = (gi, ii) => {
     const g = [...groups]
     g[gi].items.splice(ii, 1)
-    onChange({ ...content, groups: g })
+    setGroups(g)
   }
 
   const removeGroup = (gi) => {
     const g = [...groups]
     g.splice(gi, 1)
-    onChange({ ...content, groups: g })
+    setGroups(g)
   }
 
   return (
     <div className="card">
       <div className="card-title">✅ Editor de Checklist</div>
+
+      {/* View switcher */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
+        <button
+          type="button"
+          className={'btn btn-sm ' + (activeView === 'user' ? 'btn-primary' : 'btn-secondary')}
+          onClick={() => setActiveView('user')}
+        >
+          👤 Visualização Usuário
+        </button>
+        <button
+          type="button"
+          className={'btn btn-sm ' + (activeView === 'gestor' ? 'btn-primary' : 'btn-secondary')}
+          onClick={() => setActiveView('gestor')}
+        >
+          🔑 Visualização Gestor
+        </button>
+        {activeView === 'gestor' && groups.length === 0 && (
+          <span style={{ fontSize: 12, color: 'var(--text-3)', alignSelf: 'center', marginLeft: 4 }}>
+            Vazio = gestor verá a mesma lista do usuário
+          </span>
+        )}
+      </div>
 
       <div className="form-group">
         <label className="form-label">Subtítulo (opcional)</label>
@@ -1216,7 +1239,7 @@ function NotebookEditor({ content, onChange }) {
 function getDefaultContent(type) {
   switch (type) {
     case 'text': return { body: '', isHtml: true }
-    case 'checklist': return { subtitle: '', groups: [{ title: 'Grupo 1', items: [] }], closing_tip: '' }
+    case 'checklist': return { subtitle: '', groups: [{ title: 'Grupo 1', items: [] }], gestor_groups: [], closing_tip: '' }
     case 'table': return { subtitle: '', searchable: true, headers: ['Coluna 1', 'Coluna 2', 'Coluna 3'], rows: [['', '', '']], column_types: ['text', 'text', 'text'] }
     case 'links': return { items: [] }
     case 'crm_template': return { templates: [{ label: '📄 Novo template', text: '', category: '', color: 'default' }] }

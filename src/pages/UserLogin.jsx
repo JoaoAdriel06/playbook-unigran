@@ -15,14 +15,18 @@ export default function UserLogin() {
 
     const { data } = await supabase
       .from('settings')
-      .select('value')
-      .eq('key', 'user_password')
-      .single()
+      .select('key, value')
+      .in('key', ['user_password', 'gestor_password'])
 
-    const correctPassword = data?.value || 'unigran76'
+    const settings = Object.fromEntries((data || []).map(r => [r.key, r.value]))
+    const userPassword = settings.user_password || 'unigran76'
+    const gestorPassword = settings.gestor_password || 'Adriel2406'
 
-    if (password === correctPassword) {
+    if (password === userPassword) {
       sessionStorage.setItem('user_auth', 'true')
+      navigate('/')
+    } else if (password === gestorPassword) {
+      sessionStorage.setItem('gestor_auth', 'true')
       navigate('/')
     } else {
       setError('Senha incorreta.')

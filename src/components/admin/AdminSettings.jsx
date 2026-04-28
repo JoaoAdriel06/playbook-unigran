@@ -87,6 +87,14 @@ export default function AdminSettings() {
         />
       </div>
 
+      <div style={{ marginTop: 20 }}>
+        <PasswordCard
+          title="🔑 Senha do Gestor"
+          settingsKey="gestor_password"
+          defaultHint="Adriel2406"
+        />
+      </div>
+
       <div className="card" style={{ maxWidth: 480, marginTop: 20 }}>
         <div className="card-title">ℹ️ Sobre o sistema</div>
         <div style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.8 }}>
