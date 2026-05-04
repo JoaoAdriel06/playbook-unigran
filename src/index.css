@@ -627,6 +627,7 @@ td {
   font-size: 14px;
   font-family: var(--font);
   vertical-align: middle;
+  text-align: left;
 }
 
 tr:last-child td { border-bottom: none; }
@@ -791,6 +792,27 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   background: rgba(34, 197, 94, 0.14);
   color: #4ADE80;
   border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+.hl-orange {
+  background: rgba(249, 115, 22, 0.14);
+  color: #FB923C;
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+.hl-pink {
+  background: rgba(236, 72, 153, 0.14);
+  color: #F472B6;
+  border: 1px solid rgba(236, 72, 153, 0.25);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+.hl-purple {
+  background: rgba(168, 85, 247, 0.14);
+  color: #C084FC;
+  border: 1px solid rgba(168, 85, 247, 0.25);
   border-radius: 6px;
   padding: 1px 5px;
 }
@@ -1751,10 +1773,45 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   border-right-color: rgba(239,68,68,0.18);
   border-bottom-color: rgba(239,68,68,0.18);
 }
-/* Text card */
-.flow-card-text { background: var(--bg-3); }
+/* Text card — ChatGPT style */
+.flow-card-text {
+  background: transparent;
+  border-color: rgba(255,255,255,0.06);
+  position: relative;
+}
+.flow-text-body {
+  position: relative;
+  padding-right: 38px;
+}
+.flow-text-copy-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  border-radius: var(--r);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  font-family: var(--font);
+}
+.flow-card-text:hover .flow-text-copy-btn { opacity: 1; }
+.flow-text-copy-btn.copied { opacity: 1; color: #4ade80; }
 
 .flow-card-body { font-size: 14px; line-height: 1.7; color: var(--text-2); }
+.flow-text-body .flow-card-body {
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
 
 /* Layout toggle */
 .flow-layout-toggle { display: flex; gap: 4px; margin-left: auto; }

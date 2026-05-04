@@ -309,10 +309,6 @@ function renderTypedCell(cell, colType, highlightTerm) {
     return <span className="table-cell-note" dangerouslySetInnerHTML={{ __html: html }} />
   }
 
-  // text (default) — keep backward compat: plain R$ values still get badge
-  if (plain && /^R\$\s*[\d.,]+/.test(plain) && !(cell || '').includes('<')) {
-    return <span className="table-badge-value">{plain}</span>
-  }
   const html = highlightTerm ? applyHighlight(cell || '', highlightTerm) : (cell || '')
   return <span dangerouslySetInnerHTML={{ __html: html }} />
 }
@@ -590,6 +586,7 @@ const FLOW_BADGE = {
 function FlowCard({ card }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [textCopied, setTextCopied] = useState(false)
   const badge = FLOW_BADGE[card.type] || { label: card.type, cls: '' }
 
   const handleCopy = (e) => {
@@ -597,6 +594,14 @@ function FlowCard({ card }) {
     navigator.clipboard.writeText(card.text || '')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleTextCopy = (e) => {
+    e.stopPropagation()
+    const plain = (card.body || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+    navigator.clipboard.writeText(plain)
+    setTextCopied(true)
+    setTimeout(() => setTextCopied(false), 2000)
   }
 
   const renderContent = () => {
@@ -625,7 +630,12 @@ function FlowCard({ card }) {
     )
     if (card.type === 'text') return (
       <div className="flow-card-body-inner">
-        <div className="flow-card-body" dangerouslySetInnerHTML={{ __html: card.body || '' }} />
+        <div className="flow-text-body">
+          <button className={'flow-text-copy-btn' + (textCopied ? ' copied' : '')} onClick={handleTextCopy} title="Copiar texto">
+            {textCopied ? '✓' : '⎘'}
+          </button>
+          <div className="flow-card-body" dangerouslySetInnerHTML={{ __html: card.body || '' }} />
+        </div>
       </div>
     )
     return null
