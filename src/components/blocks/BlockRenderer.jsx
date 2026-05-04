@@ -313,14 +313,90 @@ function renderTypedCell(cell, colType, highlightTerm) {
   return <span dangerouslySetInnerHTML={{ __html: html }} />
 }
 
+function ContactCard({ row, ramalCol }) {
+  const [copied, setCopied] = useState(false)
+  const ramal = stripHtml(row[ramalCol] || '').trim()
+  const nameFields = row.filter((_, i) => i !== 0 && i !== ramalCol)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(ramal)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="contact-card" onClick={handleCopy} title={`Clique para copiar ${ramal}`}>
+      <div className="contact-card-names">
+        {nameFields.map((f, i) => {
+          const plain = stripHtml(f || '').trim()
+          if (!plain) return null
+          return <div key={i} className={i === 0 ? 'contact-card-name' : 'contact-card-role'}>{plain}</div>
+        })}
+      </div>
+      <div className="contact-card-ramal-row">
+        <span className="contact-ramal-num">{ramal || '—'}</span>
+        <span className={'contact-copy-btn' + (copied ? ' copied' : '')}>
+          {copied ? '✓ Copiado' : '📋 Copiar'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function TableBlock({ content, highlightTerm }) {
-  const { headers = [], rows = [], subtitle, searchable, column_types = [] } = content
+  const { headers = [], rows = [], subtitle, searchable, column_types = [], view_mode } = content
   const [q, setQ] = useState('')
 
   const filtered = q
     ? rows.filter(row => row.some(cell => stripHtml(cell).toLowerCase().includes(q.toLowerCase())))
     : rows
 
+  // ---- CONTACTS VIEW ----
+  if (view_mode === 'contacts') {
+    const ramalCol = rows[0] ? rows[0].length - 1 : headers.length - 1
+
+    // Group rows by first column value (preserve insertion order)
+    const groups = []
+    const groupMap = new Map()
+    filtered.forEach(row => {
+      const sector = stripHtml(row[0] || '').trim() || '—'
+      if (!groupMap.has(sector)) {
+        const entry = { sector, rows: [] }
+        groupMap.set(sector, entry)
+        groups.push(entry)
+      }
+      groupMap.get(sector).rows.push(row)
+    })
+
+    return (
+      <div>
+        {subtitle && <p style={{ color: '#71717A', fontSize: 13, marginBottom: 14 }}>{subtitle}</p>}
+        {searchable && (
+          <div className="table-search">
+            <span>🔍</span>
+            <input placeholder={`Buscar ${headers[1] || 'contato'}, ${headers[ramalCol] || 'ramal'}...`} value={q} onChange={e => setQ(e.target.value)} />
+            {q && <button onClick={() => setQ('')} style={{ background: 'none', border: 'none', color: '#71717A', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>}
+          </div>
+        )}
+        {groups.length === 0 ? (
+          <p style={{ color: '#515151', fontSize: 13, padding: '20px 0' }}>Nenhum resultado para "{q}"</p>
+        ) : (
+          groups.map(g => (
+            <div key={g.sector} className="contacts-section">
+              <div className="contacts-section-header">{g.sector}</div>
+              <div className="contacts-grid">
+                {g.rows.map((row, ri) => (
+                  <ContactCard key={ri} row={row} ramalCol={ramalCol} />
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    )
+  }
+
+  // ---- DEFAULT TABLE VIEW ----
   return (
     <div>
       {subtitle && <p style={{ color: '#71717A', fontSize: 13, marginBottom: 14 }}>{subtitle}</p>}

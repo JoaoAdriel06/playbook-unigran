@@ -610,6 +610,10 @@ function TableEditor({ content, onChange }) {
           <input type="checkbox" checked={!!content.searchable} onChange={e => set({ searchable: e.target.checked })} style={{ accentColor: 'var(--accent)' }} />
           Buscável
         </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', paddingBottom: 4, flexShrink: 0 }}>
+          <input type="checkbox" checked={content.view_mode === 'contacts'} onChange={e => set({ view_mode: e.target.checked ? 'contacts' : '' })} style={{ accentColor: 'var(--accent)' }} />
+          👤 Modo Contatos
+        </label>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileRef.current?.click()}>📥 Importar Excel</button>
           <span style={{ fontSize: 11, color: 'var(--text-3)' }}>.xlsx · .xls · .csv</span>
