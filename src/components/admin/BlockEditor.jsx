@@ -1334,6 +1334,14 @@ function FlowEditor({ content, onChange }) {
               style={{ flex: 1 }}
               onClick={e => e.stopPropagation()}
             />
+            <input
+              className="form-input"
+              value={step.description || ''}
+              onChange={e => updateStep(si, 'description', e.target.value)}
+              placeholder="Descrição curta (opcional, aparece no card)"
+              style={{ flex: 1 }}
+              onClick={e => e.stopPropagation()}
+            />
             <select
               className="form-input"
               value={step.visibility || 'all'}

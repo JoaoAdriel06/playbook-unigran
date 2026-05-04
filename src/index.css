@@ -1507,6 +1507,105 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 /* ---- FLOW / PLAYBOOK BLOCK ---- */
 .flow-block { display: flex; flex-direction: column; gap: 0; }
 
+/* Overview grid */
+.flow-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.flow-overview-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 28px 20px 22px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--step-color, var(--accent));
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.flow-overview-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  background: rgba(255,255,255,0.03);
+}
+
+.flow-overview-visited {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--step-color, var(--accent));
+  background: rgba(255,255,255,0.06);
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+.flow-overview-emoji {
+  font-size: 40px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+}
+
+.flow-overview-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+}
+
+.flow-overview-desc {
+  font-size: 13px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+.flow-overview-cta {
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--step-color, var(--accent));
+  opacity: 0.85;
+}
+
+/* Step topbar (back + counter) */
+.flow-step-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.flow-back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text-2);
+  font-size: 13px;
+  font-family: var(--font);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.flow-back-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+
+.flow-step-counter {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-left: auto;
+}
+
 .flow-progress-info {
   display: flex;
   align-items: center;
