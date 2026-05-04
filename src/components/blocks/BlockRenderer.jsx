@@ -289,7 +289,7 @@ function renderTypedCell(cell, colType, highlightTerm) {
     if (!plain || plain === '-') return <span style={{ color: '#515151' }}>—</span>
     const num = parseBRCurrency(plain)
     if (!isNaN(num)) {
-      return <span className="table-badge-value">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num)}</span>
+      return <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num)}</span>
     }
     return <span>{plain}</span>
   }
