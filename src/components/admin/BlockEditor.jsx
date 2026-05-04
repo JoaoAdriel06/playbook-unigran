@@ -1345,6 +1345,20 @@ function FlowEditor({ content, onChange }) {
               <option value="user">👤 Usuário</option>
               <option value="gestor">🔑 Gestor</option>
             </select>
+            <button
+              type="button"
+              className={'btn btn-xs ' + ((step.layout || 'stack') === 'stack' ? 'btn-secondary' : 'btn-primary')}
+              title="Layout: coluna / grade"
+              onClick={e => { e.stopPropagation(); updateStep(si, 'layout', (step.layout || 'stack') === 'stack' ? 'grid' : 'stack') }}
+              style={{ flexShrink: 0, fontSize: 12, padding: '2px 7px' }}
+            >{(step.layout || 'stack') === 'stack' ? '☰ Coluna' : '⊞ Grade'}</button>
+            <button
+              type="button"
+              className={'btn btn-xs ' + ((step.cards_mode || 'accordion') === 'accordion' ? 'btn-secondary' : 'btn-primary')}
+              title="Modo dos cards: acordeão / sempre aberto"
+              onClick={e => { e.stopPropagation(); updateStep(si, 'cards_mode', (step.cards_mode || 'accordion') === 'accordion' ? 'open' : 'accordion') }}
+              style={{ flexShrink: 0, fontSize: 12, padding: '2px 7px' }}
+            >{(step.cards_mode || 'accordion') === 'accordion' ? '▼ Acordeão' : '↕ Aberto'}</button>
             <span style={{ color: 'var(--text-3)', fontSize: 11, flexShrink: 0 }}>{(step.cards || []).length} card(s)</span>
             <button className="btn btn-danger btn-sm" onClick={e => { e.stopPropagation(); removeStep(si) }}>🗑</button>
             <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{expandedStep === si ? '▲' : '▼'}</span>

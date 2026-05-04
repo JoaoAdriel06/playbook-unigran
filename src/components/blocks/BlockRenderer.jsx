@@ -583,8 +583,8 @@ const FLOW_BADGE = {
   text:   { label: '📝 Texto',  cls: 'flow-badge-text' },
 }
 
-function FlowCard({ card }) {
-  const [open, setOpen] = useState(false)
+function FlowCard({ card, alwaysOpen = false }) {
+  const [open, setOpen] = useState(alwaysOpen)
   const [copied, setCopied] = useState(false)
   const [textCopied, setTextCopied] = useState(false)
   const badge = FLOW_BADGE[card.type] || { label: card.type, cls: '' }
@@ -641,6 +641,18 @@ function FlowCard({ card }) {
     return null
   }
 
+  if (alwaysOpen) {
+    return (
+      <div className={`flow-card flow-card-${card.type} open`}>
+        <div className="flow-card-toggle" style={{ cursor: 'default' }}>
+          <span className={`flow-card-badge ${badge.cls}`}>{badge.label}</span>
+          {card.title && <span className="flow-card-label">{card.title}</span>}
+        </div>
+        {renderContent()}
+      </div>
+    )
+  }
+
   return (
     <div className={`flow-card flow-card-${card.type}` + (open ? ' open' : '')}>
       <button className="flow-card-toggle" onClick={() => setOpen(v => !v)}>
@@ -667,9 +679,7 @@ export function FlowBlock({ content, blockId }) {
   const visibleSteps = steps.filter(s => canSee(s.visibility))
 
   const storageKey = `flow_visited_${blockId}_${userType}`
-  const layoutKey  = `flow_layout_${blockId}`
   const [activeStep, setActiveStep] = useState(0)
-  const [layout, setLayout] = useState(() => localStorage.getItem(layoutKey) || 'stack')
   const [visited, setVisited] = useState(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || '[]') }
     catch { return [] }
@@ -696,11 +706,6 @@ export function FlowBlock({ content, blockId }) {
     }
   }
 
-  const toggleLayout = (val) => {
-    setLayout(val)
-    localStorage.setItem(layoutKey, val)
-  }
-
   if (!visibleSteps.length) return (
     <div className="empty-state">
       <div className="empty-state-icon">🗺️</div>
@@ -711,6 +716,8 @@ export function FlowBlock({ content, blockId }) {
   const step = visibleSteps[activeStep] || visibleSteps[0]
   const visibleCards = (step.cards || []).filter(c => canSee(c.visibility))
   const visitedCount = visibleSteps.filter(s => visited.includes(s.id)).length
+  const stepLayout = step.layout || 'stack'
+  const alwaysOpen = step.cards_mode === 'open'
 
   return (
     <div className="flow-block">
@@ -748,17 +755,13 @@ export function FlowBlock({ content, blockId }) {
         <div className="flow-step-header">
           <div className="flow-step-num">{activeStep + 1}</div>
           <div className="flow-step-name">{step.emoji && <span>{step.emoji} </span>}{step.title}</div>
-          <div className="flow-layout-toggle">
-            <button className={'flow-layout-btn' + (layout === 'stack' ? ' active' : '')} onClick={() => toggleLayout('stack')} title="Coluna">☰</button>
-            <button className={'flow-layout-btn' + (layout === 'grid'  ? ' active' : '')} onClick={() => toggleLayout('grid')}  title="Grade">⊞</button>
-          </div>
         </div>
 
-        <div key={activeStep} className={'flow-cards' + (layout === 'grid' ? ' grid' : '')}>
+        <div key={activeStep} className={'flow-cards' + (stepLayout === 'grid' ? ' grid' : '')}>
           {visibleCards.length === 0 ? (
             <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhum card nesta etapa.</p>
           ) : (
-            visibleCards.map(card => <FlowCard key={card.id} card={card} />)
+            visibleCards.map(card => <FlowCard key={card.id} card={card} alwaysOpen={alwaysOpen} />)
           )}
         </div>
 

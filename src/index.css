@@ -1805,7 +1805,7 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .flow-card-text:hover .flow-text-copy-btn { opacity: 1; }
 .flow-text-copy-btn.copied { opacity: 1; color: #4ade80; }
 
-.flow-card-body { font-size: 14px; line-height: 1.7; color: var(--text-2); }
+.flow-card-body { font-size: 14px; line-height: 1.7; color: var(--text-2); white-space: pre-wrap; }
 .flow-text-body .flow-card-body {
   font-size: 15px;
   line-height: 1.85;
