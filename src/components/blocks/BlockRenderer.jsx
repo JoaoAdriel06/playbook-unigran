@@ -314,18 +314,11 @@ function renderTypedCell(cell, colType, highlightTerm) {
 }
 
 function ContactCard({ row, ramalCol }) {
-  const [copied, setCopied] = useState(false)
   const ramal = stripHtml(row[ramalCol] || '').trim()
   const nameFields = row.filter((_, i) => i !== 0 && i !== ramalCol)
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(ramal)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   return (
-    <div className="contact-card" onClick={handleCopy} title={`Clique para copiar ${ramal}`}>
+    <div className="contact-card">
       <div className="contact-card-names">
         {nameFields.map((f, i) => {
           const plain = stripHtml(f || '').trim()
@@ -335,9 +328,6 @@ function ContactCard({ row, ramalCol }) {
       </div>
       <div className="contact-card-ramal-row">
         <span className="contact-ramal-num">{ramal || '—'}</span>
-        <span className={'contact-copy-btn' + (copied ? ' copied' : '')}>
-          {copied ? '✓ Copiado' : '📋 Copiar'}
-        </span>
       </div>
     </div>
   )
