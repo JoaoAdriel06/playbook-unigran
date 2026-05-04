@@ -1654,13 +1654,13 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .flow-cards {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 22px;
+  gap: 10px;
+  margin-bottom: 24px;
 }
 .flow-cards.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
 }
 
 /* Card base — accordion */
@@ -1676,7 +1676,7 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 14px;
+  padding: 14px 18px;
   background: none;
   border: none;
   cursor: pointer;
@@ -1688,9 +1688,9 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .flow-card.open .flow-card-toggle { background: rgba(255,255,255,0.03); }
 
 .flow-card-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 20px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1703,7 +1703,7 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .flow-badge-text   { background: rgba(255,255,255,0.06); color: var(--text-3); }
 
 .flow-card-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-2);
   flex: 1;
@@ -1715,21 +1715,20 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 
 /* Expanded content */
 .flow-card-body-inner {
-  padding: 0 14px 14px;
+  padding: 14px 18px 18px;
   border-top: 1px solid rgba(255,255,255,0.05);
-  padding-top: 13px;
 }
 
 /* Script card */
 .flow-card-script { background: #0e0e0e; border-color: rgba(99,102,241,0.2); }
 .flow-card-script .flow-card-toggle { border-bottom: 1px solid rgba(99,102,241,0.1); }
 .flow-script-text {
-  font-size: 14px;
-  line-height: 1.75;
+  font-size: 15px;
+  line-height: 1.8;
   color: var(--text);
   white-space: pre-wrap;
   font-family: var(--font);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .flow-copy-btn {
   display: inline-flex;
@@ -1805,7 +1804,7 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .flow-card-text:hover .flow-text-copy-btn { opacity: 1; }
 .flow-text-copy-btn.copied { opacity: 1; color: #4ade80; }
 
-.flow-card-body { font-size: 14px; line-height: 1.7; color: var(--text-2); white-space: pre-wrap; }
+.flow-card-body { font-size: 15px; line-height: 1.75; color: var(--text-2); white-space: pre-wrap; }
 .flow-text-body .flow-card-body {
   font-size: 15px;
   line-height: 1.85;
