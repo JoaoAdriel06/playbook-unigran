@@ -90,12 +90,16 @@ export default function SectionPage({ slug: slugProp }) {
   const sidebarEnabled = section.show_sidebar
   const searchBlocks = blocks.filter(b => b.type === 'search')
   const nonSearchBlocks = blocks.filter(b => b.type !== 'search')
-  // Include every non-search block in sidebar (fallback to type label if no title)
   const sidebarBlocks = sidebarEnabled ? nonSearchBlocks : []
   const hasSidebar = sidebarEnabled && sidebarBlocks.length > 0
 
   const position = section.sidebar_position || 'left'
   const sidebarSticky = !!(hasSidebar && position === 'top' && section.sidebar_sticky)
+
+  // In tab mode, the active block defaults to the first non-search block
+  const tabActiveId = sidebarSticky
+    ? (activeId || nonSearchBlocks[0]?.id || null)
+    : activeId
 
   const stickySearchBlocks = searchBlocks.filter(b => b.content?.sticky)
   const normalSearchBlocks = searchBlocks.filter(b => !b.content?.sticky)
@@ -109,19 +113,24 @@ export default function SectionPage({ slug: slugProp }) {
     }, 60)
   }
 
-  const SidebarNav = ({ className }) => (
+  const switchTab = (blockId) => {
+    setActiveId(blockId)
+  }
+
+  const SidebarNav = ({ className, tabMode = false }) => (
     <nav className={className}>
       <div className="page-sidebar-title">Nesta página</div>
       {sidebarBlocks.map(block => {
         const label = block.title || BLOCK_LABELS[block.type] || block.type
+        const isActive = tabMode ? block.id === tabActiveId : block.id === activeId
         return (
           <a
             key={block.id}
             href={`#block-${block.id}`}
-            className={'page-sidebar-link' + (activeId === block.id ? ' active' : '')}
+            className={'page-sidebar-link' + (isActive ? ' active' : '')}
             onClick={e => {
               e.preventDefault()
-              scrollToBlock(block.id)
+              tabMode ? switchTab(block.id) : scrollToBlock(block.id)
             }}
           >{label}</a>
         )
@@ -153,24 +162,30 @@ export default function SectionPage({ slug: slugProp }) {
 
   const StickyBar = () => (
     <div className="page-sticky-bar">
-      {sidebarSticky && <SidebarNav className="page-sidebar-top" />}
+      {sidebarSticky && <SidebarNav className="page-sidebar-top" tabMode />}
       {stickySearchBlocks.map(b => renderBlock(b))}
     </div>
   )
 
-  const Content = () => (
-    <>
-      {normalSearchBlocks.map(block => renderBlock(block))}
-      {nonSearchBlocks.length === 0 && searchBlocks.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">📭</div>
-          <div className="empty-state-text">Esta seção ainda não tem conteúdo.<br />Adicione blocos pelo painel Admin.</div>
-        </div>
-      ) : (
-        nonSearchBlocks.map(block => renderBlock(block))
-      )}
-    </>
-  )
+  const Content = () => {
+    const blocksToRender = sidebarSticky
+      ? nonSearchBlocks.filter(b => b.id === tabActiveId)
+      : nonSearchBlocks
+
+    return (
+      <>
+        {normalSearchBlocks.map(block => renderBlock(block))}
+        {nonSearchBlocks.length === 0 && searchBlocks.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">📭</div>
+            <div className="empty-state-text">Esta seção ainda não tem conteúdo.<br />Adicione blocos pelo painel Admin.</div>
+          </div>
+        ) : (
+          blocksToRender.map(block => renderBlock(block))
+        )}
+      </>
+    )
+  }
 
   // Left position
   if (hasSidebar && position === 'left') {
