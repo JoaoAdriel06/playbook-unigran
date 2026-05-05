@@ -56,7 +56,7 @@ export function sanitizeHtml(html) {
       case 'mark': return `<mark>${inner()}</mark>`
       case 'span': {
         const cls = node.getAttribute('class') || ''
-        if (cls === 'hl-yellow' || cls === 'hl-blue' || cls === 'hl-green') {
+        if (['hl-yellow','hl-blue','hl-green','hl-orange','hl-pink','hl-purple'].includes(cls)) {
           return `<span class="${cls}">${inner()}</span>`
         }
         return inner()

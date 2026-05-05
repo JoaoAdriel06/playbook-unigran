@@ -274,6 +274,21 @@ const TextEditor = forwardRef(function TextEditor({ content, onChange }, ref) {
             title="Grifo Verde"
             onMouseDown={e => { e.preventDefault(); insertHighlight('green') }}
           ><span className="hl-green" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span></button>
+          <button
+            className="rich-btn rich-btn-dark"
+            title="Grifo Laranja"
+            onMouseDown={e => { e.preventDefault(); insertHighlight('orange') }}
+          ><span className="hl-orange" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span></button>
+          <button
+            className="rich-btn rich-btn-dark"
+            title="Grifo Rosa"
+            onMouseDown={e => { e.preventDefault(); insertHighlight('pink') }}
+          ><span className="hl-pink" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span></button>
+          <button
+            className="rich-btn rich-btn-dark"
+            title="Grifo Roxo"
+            onMouseDown={e => { e.preventDefault(); insertHighlight('purple') }}
+          ><span className="hl-purple" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span></button>
         </div>
         <div
           ref={editorRef}
@@ -667,6 +682,18 @@ function TableEditor({ content, onChange }) {
         <button className="rich-btn rich-btn-dark" title="Grifo Verde"
           onMouseDown={e => { e.preventDefault(); insertHighlight('green') }}>
           <span className="hl-green" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span>
+        </button>
+        <button className="rich-btn rich-btn-dark" title="Grifo Laranja"
+          onMouseDown={e => { e.preventDefault(); insertHighlight('orange') }}>
+          <span className="hl-orange" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span>
+        </button>
+        <button className="rich-btn rich-btn-dark" title="Grifo Rosa"
+          onMouseDown={e => { e.preventDefault(); insertHighlight('pink') }}>
+          <span className="hl-pink" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span>
+        </button>
+        <button className="rich-btn rich-btn-dark" title="Grifo Roxo"
+          onMouseDown={e => { e.preventDefault(); insertHighlight('purple') }}>
+          <span className="hl-purple" style={{ fontSize: 11, pointerEvents: 'none' }}>A</span>
         </button>
         <span className="rich-divider rich-divider-dark" />
         <button className="rich-btn rich-btn-dark" title="Alinhar à esquerda"
