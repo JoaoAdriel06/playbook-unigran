@@ -2160,15 +2160,15 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   display: grid;
   grid-template-columns: 240px 1fr;
   gap: 0;
-  align-items: start;
+  align-items: stretch;
+  min-height: calc(100vh - var(--nav-h));
 }
 
 .page-sidebar {
   position: sticky;
   top: var(--nav-h);
   width: 240px;
-  min-height: calc(100vh - var(--nav-h));
-  max-height: calc(100vh - var(--nav-h));
+  height: calc(100vh - var(--nav-h));
   overflow-y: auto;
   scrollbar-width: none;
   background: rgba(14, 16, 22, 0.98);
@@ -2258,14 +2258,18 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .page-sidebar .page-sidebar-link:hover {
   background: rgba(255, 255, 255, 0.04);
   color: #D4D4D8;
-  border-left-color: rgba(240, 173, 78, 0.3);
 }
 
 .page-sidebar .page-sidebar-link.active {
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(245, 158, 11, 0.10);
   color: #FBBF24;
-  border-left-color: var(--accent);
+  border-left-color: transparent;
   font-weight: 600;
+  margin: 0 10px;
+  width: calc(100% - 20px);
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
 /* Nav items — top/bottom sidebars (keep pill style) */
@@ -2306,8 +2310,11 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   position: sticky;
   top: var(--nav-h);
   z-index: 100;
-  background: transparent;
-  padding-bottom: 4px;
+  background: var(--bg);
+  padding-bottom: 8px;
+  padding-top: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 8px;
 }
 
 .page-sticky-bar .card { margin-bottom: 8px; }

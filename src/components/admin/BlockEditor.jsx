@@ -232,6 +232,15 @@ const TextEditor = forwardRef(function TextEditor({ content, onChange }, ref) {
             onChange={e => onChange({ ...content, updatedAt: e.target.value })}
           />
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', paddingBottom: 4, flexShrink: 0 }}>
+          <input
+            type="checkbox"
+            checked={content.show_copy_btn !== false}
+            onChange={e => onChange({ ...content, show_copy_btn: e.target.checked })}
+            style={{ accentColor: 'var(--accent)' }}
+          />
+          📋 Botão de copiar
+        </label>
       </div>
 
       {/* Editor (kept mounted, hidden in preview mode) */}

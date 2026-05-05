@@ -107,7 +107,7 @@ function parseIntoSections(html) {
   return [clean]
 }
 
-function TextSection({ html, index, highlightTerm }) {
+function TextSection({ html, index, highlightTerm, showCopy }) {
   const accent = SECTION_COLORS[index % SECTION_COLORS.length]
   const [copied, setCopied] = useState(false)
 
@@ -122,9 +122,11 @@ function TextSection({ html, index, highlightTerm }) {
 
   return (
     <div className="text-section-card" style={{ '--section-accent': accent }}>
-      <button className={'text-section-copy' + (copied ? ' copied' : '')} onClick={handleCopy}>
-        {copied ? '✓ Copiado' : '📋 Copiar'}
-      </button>
+      {showCopy && (
+        <button className={'text-section-copy' + (copied ? ' copied' : '')} onClick={handleCopy}>
+          {copied ? '✓ Copiado' : '📋 Copiar'}
+        </button>
+      )}
       <div className="text-content-rich" dangerouslySetInnerHTML={{ __html: display }} />
     </div>
   )
@@ -132,7 +134,8 @@ function TextSection({ html, index, highlightTerm }) {
 
 // ---- TEXT BLOCK ----
 export function TextBlock({ content, highlightTerm }) {
-  const { body = '', category, updatedAt } = content
+  const { body = '', category, updatedAt, show_copy_btn } = content
+  const showCopy = show_copy_btn !== false
 
   const sections = useMemo(() => {
     const clean = sanitizeHtml(body)
@@ -149,7 +152,7 @@ export function TextBlock({ content, highlightTerm }) {
       )}
       <div className="text-doc-document">
         {sections.filter(s => s.trim()).map((section, i) => (
-          <TextSection key={i} html={section} index={i} highlightTerm={highlightTerm} />
+          <TextSection key={i} html={section} index={i} highlightTerm={highlightTerm} showCopy={showCopy} />
         ))}
       </div>
     </div>
