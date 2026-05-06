@@ -962,8 +962,7 @@ export function BlockRenderer({ block, allBlocks, onNavigate, highlightTerm = ''
   }
 
   const classes = [
-    'card',
-    type === 'search' ? 'card-search' : '',
+    type === 'search' ? 'card-search' : 'card',
     highlightTerm ? 'card-highlighted' : '',
   ].filter(Boolean).join(' ')
 
