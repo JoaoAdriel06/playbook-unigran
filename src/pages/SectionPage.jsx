@@ -108,9 +108,6 @@ export default function SectionPage({ slug: slugProp }) {
 
   const scrollToBlock = (blockId) => {
     setActiveId(blockId)
-    setTimeout(() => {
-      document.getElementById(`block-${blockId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 60)
   }
 
   const switchTab = (blockId) => {

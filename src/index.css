@@ -556,21 +556,23 @@ mark {
 
 /* ---- TABLE ---- */
 .table-search {
-  height: 44px;
+  height: 40px;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
-  background: rgba(18, 22, 30, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 0 16px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  margin-bottom: 0;
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0 14px;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .table-search:focus-within {
-  border-color: rgba(245, 158, 11, 0.35);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
 .table-search span {
@@ -2190,16 +2192,18 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .page-sidebar-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  background: rgba(18, 22, 30, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 8px;
-  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 6px 8px;
+  margin-bottom: 0;
 }
 .page-sidebar-top::-webkit-scrollbar { display: none; }
 .page-sidebar-top .page-sidebar-title { display: none; }
@@ -2276,12 +2280,12 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 .page-sidebar-top .page-sidebar-link,
 .page-sidebar-bottom .page-sidebar-link {
   display: block;
-  padding: 8px 14px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: #A1A1AA;
   text-decoration: none;
   cursor: pointer;
@@ -2294,15 +2298,17 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
 
 .page-sidebar-top .page-sidebar-link:hover,
 .page-sidebar-bottom .page-sidebar-link:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #F4F4F5;
+  background: rgba(255, 255, 255, 0.06);
+  color: #D4D4D8;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .page-sidebar-top .page-sidebar-link.active,
 .page-sidebar-bottom .page-sidebar-link.active {
-  background: rgba(245, 158, 11, 0.12);
+  background: rgba(245, 158, 11, 0.10);
   color: #FBBF24;
-  border-color: rgba(245, 158, 11, 0.28);
+  border-color: rgba(245, 158, 11, 0.25);
+  font-weight: 600;
 }
 
 /* Sticky bar (top-pinned nav + sticky search blocks) */
@@ -2310,11 +2316,12 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   position: sticky;
   top: var(--nav-h);
   z-index: 100;
-  background: var(--bg);
-  padding-bottom: 8px;
-  padding-top: 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  margin-bottom: 8px;
+  background: rgba(26, 26, 26, 0.6);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 12px;
 }
 
 .page-sticky-bar .card { margin-bottom: 8px; }
