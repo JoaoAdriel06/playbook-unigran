@@ -943,6 +943,26 @@ export function SearchBlock({ content, blockId, allBlocks = [], onNavigate }) {
   )
 }
 
+// ---- IMAGE BLOCK ----
+export function ImageBlock({ content }) {
+  const { url, alt = '', width = 100, align = 'center', caption } = content
+  if (!url) return <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhuma imagem configurada.</p>
+
+  const wrapStyle = {
+    display: 'flex',
+    justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
+  }
+
+  return (
+    <div className="image-block-wrap" style={wrapStyle}>
+      <div style={{ width: `${width}%` }}>
+        <img src={url} alt={alt} className="image-block-img" />
+        {caption && <p className="image-block-caption">{caption}</p>}
+      </div>
+    </div>
+  )
+}
+
 // ---- BLOCK DISPATCHER ----
 export function BlockRenderer({ block, allBlocks, onNavigate, highlightTerm = '' }) {
   const { type, title, content, id } = block
@@ -957,6 +977,7 @@ export function BlockRenderer({ block, allBlocks, onNavigate, highlightTerm = ''
       case 'notepad':      return <NotebookBlock content={content} blockId={id} />
       case 'search':       return <SearchBlock content={content} blockId={id} allBlocks={allBlocks} onNavigate={onNavigate} />
       case 'flow':         return <FlowBlock content={content} blockId={id} />
+      case 'image':        return <ImageBlock content={content} />
       default:             return <p style={{ color: 'var(--text-3)' }}>Tipo de bloco desconhecido: {type}</p>
     }
   }

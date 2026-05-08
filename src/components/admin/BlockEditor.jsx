@@ -10,6 +10,7 @@ const BLOCK_TYPES = [
   { value: 'notepad', label: '🗒️ Bloco de Notas', desc: 'Cards de anotações com texto, cor e to-do. Conteúdo gerenciado pelo admin.' },
   { value: 'search', label: '🔍 Bloco de Busca', desc: 'Campo de busca que pesquisa conteúdo de outros blocos da mesma página.' },
   { value: 'flow', label: '🗺️ Playbook de Fluxo', desc: 'Etapas interativas com scripts, regras e dicas. Ideal para processos de atendimento.' },
+  { value: 'image', label: '🖼️ Imagem', desc: 'Exibe uma imagem com controle de tamanho e alinhamento. Ideal para banners, fluxogramas e fotos.' },
 ]
 
 export default function BlockEditor({ block, sectionTitle, onSave, onCancel }) {
@@ -117,6 +118,9 @@ export default function BlockEditor({ block, sectionTitle, onSave, onCancel }) {
       )}
       {type === 'flow' && (
         <FlowEditor content={content} onChange={setContent} />
+      )}
+      {type === 'image' && (
+        <ImageEditor content={content} onChange={setContent} />
       )}
     </div>
   )
@@ -1509,6 +1513,116 @@ function FlowEditor({ content, onChange }) {
   )
 }
 
+// ---- IMAGE EDITOR ----
+function ImageEditor({ content, onChange }) {
+  const fileRef = useRef(null)
+  const [error, setError] = useState('')
+
+  const width = content.width ?? 100
+  const align = content.align || 'center'
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ''
+    setError('')
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Arquivo muito grande. Máximo 5 MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => onChange({ ...content, url: ev.target.result })
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="card">
+      <div className="card-title">🖼️ Editor de Imagem</div>
+
+      {/* Upload */}
+      <div style={{ marginBottom: 20 }}>
+        <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
+          📁 Selecionar imagem
+        </button>
+        <span style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 10 }}>PNG, JPG, GIF, WebP — máx. 5 MB</span>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+        {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 6 }}>{error}</p>}
+      </div>
+
+      {/* Preview */}
+      {content.url && (
+        <div style={{ marginBottom: 20, textAlign: align, border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12, background: 'var(--bg-3)' }}>
+          <img
+            src={content.url}
+            alt={content.alt || ''}
+            style={{ maxWidth: `${width}%`, borderRadius: 'var(--r)', display: 'inline-block' }}
+          />
+        </div>
+      )}
+
+      {/* Width slider */}
+      <div className="form-group">
+        <label className="form-label">Largura: {width}%</label>
+        <input
+          type="range"
+          min={10}
+          max={100}
+          step={5}
+          value={width}
+          onChange={e => onChange({ ...content, width: Number(e.target.value) })}
+          style={{ width: '100%', accentColor: 'var(--accent)' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+          <span>10%</span>
+          <span>50%</span>
+          <span>100%</span>
+        </div>
+      </div>
+
+      {/* Alignment */}
+      <div className="form-group">
+        <label className="form-label">Alinhamento</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[
+            { value: 'left',   label: '⬅ Esquerda' },
+            { value: 'center', label: '↔ Centro' },
+            { value: 'right',  label: '➡ Direita' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              className={'btn btn-sm ' + (align === opt.value ? 'btn-primary' : 'btn-secondary')}
+              onClick={() => onChange({ ...content, align: opt.value })}
+            >{opt.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Alt / Caption */}
+      <div style={{ display: 'flex', gap: 12 }}>
+        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+          <label className="form-label">Texto alternativo (acessibilidade)</label>
+          <input
+            className="form-input"
+            value={content.alt || ''}
+            onChange={e => onChange({ ...content, alt: e.target.value })}
+            placeholder="Descrição da imagem para leitores de tela"
+          />
+        </div>
+        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+          <label className="form-label">Legenda (opcional)</label>
+          <input
+            className="form-input"
+            value={content.caption || ''}
+            onChange={e => onChange({ ...content, caption: e.target.value })}
+            placeholder="Texto exibido abaixo da imagem"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ---- DEFAULTS ----
 function getDefaultContent(type) {
   switch (type) {
@@ -1520,6 +1634,7 @@ function getDefaultContent(type) {
     case 'crm_template': return { templates: [{ label: '📄 Novo template', text: '', category: '', color: 'default' }] }
     case 'notepad': return { instructions: '', cards: [], layout: 'grid' }
     case 'search': return { placeholder: '', search_in: [] }
+    case 'image': return { url: '', alt: '', width: 100, align: 'center', caption: '' }
     default: return {}
   }
 }

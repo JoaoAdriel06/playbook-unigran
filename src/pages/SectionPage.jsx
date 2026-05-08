@@ -94,10 +94,11 @@ export default function SectionPage({ slug: slugProp }) {
   const hasSidebar = sidebarEnabled && sidebarBlocks.length > 0
 
   const position = section.sidebar_position || 'left'
-  const sidebarSticky = !!(hasSidebar && position === 'top' && section.sidebar_sticky)
+  const isTopPosition = hasSidebar && position === 'top'
+  const sidebarSticky = !!(isTopPosition && section.sidebar_sticky)
 
-  // In tab mode, the active block defaults to the first non-search block
-  const tabActiveId = sidebarSticky
+  // Top-position always works as tabs: show only the active block (default = first)
+  const tabActiveId = isTopPosition
     ? (activeId || nonSearchBlocks[0]?.id || null)
     : activeId
 
@@ -106,12 +107,14 @@ export default function SectionPage({ slug: slugProp }) {
 
   const hasStickyBar = sidebarSticky || stickySearchBlocks.length > 0
 
+  const switchTab = (blockId) => setActiveId(blockId)
+
   const scrollToBlock = (blockId) => {
     setActiveId(blockId)
-  }
-
-  const switchTab = (blockId) => {
-    setActiveId(blockId)
+    setTimeout(() => {
+      const el = document.getElementById(`block-${blockId}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
   }
 
   const SidebarNav = ({ className, tabMode = false }) => (
@@ -144,7 +147,11 @@ export default function SectionPage({ slug: slugProp }) {
   const handleNavigate = (blockId, term = '') => {
     setHighlight({ blockId, term })
     setTimeout(() => setHighlight({ blockId: null, term: '' }), 5000)
-    scrollToBlock(blockId)
+    if (isTopPosition) {
+      switchTab(blockId)
+    } else {
+      scrollToBlock(blockId)
+    }
   }
 
   const renderBlock = (block) => (
@@ -165,7 +172,8 @@ export default function SectionPage({ slug: slugProp }) {
   )
 
   const Content = () => {
-    const blocksToRender = sidebarSticky
+    // Top-position: always show only the active block (tab mode)
+    const blocksToRender = isTopPosition
       ? nonSearchBlocks.filter(b => b.id === tabActiveId)
       : nonSearchBlocks
 
@@ -198,12 +206,13 @@ export default function SectionPage({ slug: slugProp }) {
     )
   }
 
-  // Top position
-  if (hasSidebar && position === 'top') {
+  // Top position — topbar always acts as tab navigator (one block visible at a time)
+  if (isTopPosition) {
     return (
       <div className="page page-with-sidebar-top">
         <PageHeader />
-        {!sidebarSticky && <SidebarNav className="page-sidebar-top" />}
+        {/* Non-sticky topbar rendered inline above content */}
+        {!sidebarSticky && <SidebarNav className="page-sidebar-top" tabMode />}
         {hasStickyBar && <StickyBar />}
         <div className="page-main-content">
           <Content />
