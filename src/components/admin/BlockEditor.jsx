@@ -867,7 +867,18 @@ function CrmEditor({ content, onChange }) {
 
   return (
     <div className="card">
-      <div className="card-title">📋 Editor de Templates CRM</div>
+      <div className="card-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span>📋 Editor de Templates CRM</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 400, color: 'var(--text-2)', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={!!content.default_open}
+            onChange={e => onChange({ ...content, default_open: e.target.checked })}
+            style={{ accentColor: 'var(--accent)', width: 15, height: 15 }}
+          />
+          Abrir acordeões por padrão
+        </label>
+      </div>
       {templates.map((tpl, i) => (
         <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 14, marginBottom: 10 }}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>

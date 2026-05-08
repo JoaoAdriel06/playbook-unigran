@@ -456,8 +456,12 @@ const CRM_BADGE_CLASS = {
 }
 
 export function CrmTemplateBlock({ content, highlightTerm }) {
-  const { templates = [] } = content
-  const [open, setOpen] = useState(null)
+  const { templates = [], default_open = false } = content
+
+  const makeDefaultSet = (list) =>
+    default_open ? new Set(list.map((_, i) => i)) : new Set()
+
+  const [openSet, setOpenSet] = useState(() => makeDefaultSet(templates))
   const [copied, setCopied] = useState(null)
   const [activeCategory, setActiveCategory] = useState('all')
 
@@ -468,10 +472,20 @@ export function CrmTemplateBlock({ content, highlightTerm }) {
     ? templates
     : templates.filter(t => t.category === activeCategory)
 
-  const autoOpen = highlightTerm
+  const toggle = (i) => {
+    setOpenSet(prev => {
+      const next = new Set(prev)
+      next.has(i) ? next.delete(i) : next.add(i)
+      return next
+    })
+  }
+
+  // Auto-open matched template from search highlight
+  const autoOpenIdx = highlightTerm
     ? filtered.findIndex(t => (t.text + ' ' + t.label).toLowerCase().includes(highlightTerm.toLowerCase()))
     : -1
-  const effectiveOpen = open !== null ? open : (autoOpen >= 0 ? autoOpen : null)
+
+  const isOpen = (i) => openSet.has(i) || i === autoOpenIdx
 
   const copy = async (text, idx) => {
     await navigator.clipboard.writeText(text)
@@ -481,7 +495,7 @@ export function CrmTemplateBlock({ content, highlightTerm }) {
 
   const handleCategoryChange = (cat) => {
     setActiveCategory(cat)
-    setOpen(null)
+    setOpenSet(makeDefaultSet(filtered))
   }
 
   return (
@@ -508,7 +522,7 @@ export function CrmTemplateBlock({ content, highlightTerm }) {
             key={i}
             className={['crm-template-card', CRM_COLOR_CLASS[tpl.color] || ''].filter(Boolean).join(' ')}
           >
-            <div className="crm-template-header" onClick={() => setOpen(effectiveOpen === i ? null : i)}>
+            <div className="crm-template-header" onClick={() => toggle(i)}>
               <span
                 className="crm-template-label"
                 dangerouslySetInnerHTML={{ __html: highlightTerm ? applyHighlight(tpl.label, highlightTerm) : tpl.label }}
@@ -525,10 +539,10 @@ export function CrmTemplateBlock({ content, highlightTerm }) {
                 >
                   {copied === i ? '✓ Copiado' : 'Copiar'}
                 </button>
-                <span style={{ color: 'var(--text-3)', fontSize: 10 }}>{effectiveOpen === i ? '▲' : '▼'}</span>
+                <span style={{ color: 'var(--text-3)', fontSize: 10 }}>{isOpen(i) ? '▲' : '▼'}</span>
               </div>
             </div>
-            {effectiveOpen === i && (
+            {isOpen(i) && (
               <div
                 className="crm-template-body"
                 dangerouslySetInnerHTML={{ __html: highlightTerm ? applyHighlight(tpl.text, highlightTerm) : tpl.text }}
