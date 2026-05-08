@@ -2388,4 +2388,11 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   margin-top: 8px;
   margin-bottom: 0;
 }
+
+.image-block-pdf {
+  width: 100%;
+  border: none;
+  border-radius: var(--r);
+  display: block;
+}
 }

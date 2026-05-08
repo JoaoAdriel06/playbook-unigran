@@ -556,8 +556,65 @@ const getCardAccent = (colorValue) => {
   return found ? found.accent : '#f0ad4e'
 }
 
+function NoteCard({ card, checked, onToggle }) {
+  const accent = getCardAccent(card.color)
+  const badges = Array.isArray(card.badges)
+    ? card.badges
+    : (card.badges ? String(card.badges).split(',').map(b => b.trim()).filter(Boolean) : [])
+  const isRich = card.isHtml || (card.body && card.body.trim().startsWith('<'))
+
+  return (
+    <div className="notepad-card" style={{ '--card-accent': accent }}>
+      {(card.icon || card.title) && (
+        <div className="notepad-card-header">
+          {card.icon && <span className="notepad-card-icon">{card.icon}</span>}
+          {card.title && <div className="notepad-card-title">{card.title}</div>}
+        </div>
+      )}
+      {card.subtitle && <div className="notepad-card-subtitle">{card.subtitle}</div>}
+      {badges.length > 0 && (
+        <div className="notepad-badges">
+          {badges.map((badge, i) => (
+            <span key={i} className="notepad-badge" style={{ color: accent }}>{badge}</span>
+          ))}
+        </div>
+      )}
+      {card.body && (
+        isRich
+          ? <div className="notepad-card-body" dangerouslySetInnerHTML={{ __html: card.body }} />
+          : <div className="notepad-card-body">{card.body}</div>
+      )}
+      {(card.todos || []).length > 0 && (
+        <div className="notepad-todos">
+          {card.body && <div className="notepad-todos-divider" />}
+          {card.todos.map(todo => {
+            const done = !!checked[todo.id]
+            return (
+              <div
+                key={todo.id}
+                className={'notepad-todo-item' + (done ? ' done' : '')}
+                onClick={() => onToggle(todo.id)}
+              >
+                <div
+                  className="notepad-todo-check"
+                  style={{
+                    borderColor: done ? accent : 'rgba(255,255,255,0.25)',
+                    background: done ? accent : 'transparent',
+                    color: done ? '#1a1a1a' : 'transparent',
+                  }}
+                >✓</div>
+                <span className="notepad-todo-text">{todo.text}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function NotebookBlock({ content, blockId }) {
-  const { cards = [], instructions, layout } = content
+  const { cards = [], instructions, layout, header_card } = content
   const storageKey = `notepad_todos_${blockId}`
 
   const [checked, setChecked] = useState(() => {
@@ -578,67 +635,23 @@ export function NotebookBlock({ content, blockId }) {
       {instructions && (
         <p style={{ color: '#A1A1AA', fontSize: 14, marginBottom: 20 }}>{instructions}</p>
       )}
-      {cards.length === 0 ? (
-        <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhuma anotação adicionada ainda.</p>
-      ) : (
-        <div className={containerClass}>
-          {cards.map(card => {
-            const accent = getCardAccent(card.color)
-            const badges = Array.isArray(card.badges)
-              ? card.badges
-              : (card.badges ? String(card.badges).split(',').map(b => b.trim()).filter(Boolean) : [])
-            const isRich = card.isHtml || (card.body && card.body.trim().startsWith('<'))
-            return (
-              <div key={card.id} className="notepad-card" style={{ '--card-accent': accent }}>
-                {(card.icon || card.title) && (
-                  <div className="notepad-card-header">
-                    {card.icon && <span className="notepad-card-icon">{card.icon}</span>}
-                    {card.title && <div className="notepad-card-title">{card.title}</div>}
-                  </div>
-                )}
-                {card.subtitle && <div className="notepad-card-subtitle">{card.subtitle}</div>}
-                {badges.length > 0 && (
-                  <div className="notepad-badges">
-                    {badges.map((badge, i) => (
-                      <span key={i} className="notepad-badge" style={{ color: accent }}>{badge}</span>
-                    ))}
-                  </div>
-                )}
-                {card.body && (
-                  isRich
-                    ? <div className="notepad-card-body" dangerouslySetInnerHTML={{ __html: card.body }} />
-                    : <div className="notepad-card-body">{card.body}</div>
-                )}
-                {(card.todos || []).length > 0 && (
-                  <div className="notepad-todos">
-                    {card.body && <div className="notepad-todos-divider" />}
-                    {card.todos.map(todo => {
-                      const done = !!checked[todo.id]
-                      return (
-                        <div
-                          key={todo.id}
-                          className={'notepad-todo-item' + (done ? ' done' : '')}
-                          onClick={() => toggleTodo(todo.id)}
-                        >
-                          <div
-                            className="notepad-todo-check"
-                            style={{
-                              borderColor: done ? accent : 'rgba(255,255,255,0.25)',
-                              background: done ? accent : 'transparent',
-                              color: done ? '#1a1a1a' : 'transparent',
-                            }}
-                          >✓</div>
-                          <span className="notepad-todo-text">{todo.text}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+
+      {/* Bloco inicial de orientações — full-width, sempre em coluna */}
+      {header_card && (
+        <div className="notepad-stack" style={{ marginBottom: cards.length > 0 ? 20 : 0 }}>
+          <NoteCard card={header_card} checked={checked} onToggle={toggleTodo} />
         </div>
       )}
+
+      {cards.length === 0 && !header_card ? (
+        <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhuma anotação adicionada ainda.</p>
+      ) : cards.length > 0 ? (
+        <div className={containerClass}>
+          {cards.map(card => (
+            <NoteCard key={card.id} card={card} checked={checked} onToggle={toggleTodo} />
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -945,18 +958,29 @@ export function SearchBlock({ content, blockId, allBlocks = [], onNavigate }) {
 
 // ---- IMAGE BLOCK ----
 export function ImageBlock({ content }) {
-  const { url, alt = '', width = 100, align = 'center', caption } = content
-  if (!url) return <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhuma imagem configurada.</p>
+  const { url, alt = '', width = 100, align = 'center', caption, file_type, pdf_height = 600 } = content
+  if (!url) return <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Nenhum arquivo configurado.</p>
+
+  const isPdf = file_type === 'pdf' || url.startsWith('data:application/pdf')
 
   const wrapStyle = {
     display: 'flex',
-    justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
+    justifyContent: isPdf || align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
   }
 
   return (
     <div className="image-block-wrap" style={wrapStyle}>
       <div style={{ width: `${width}%` }}>
-        <img src={url} alt={alt} className="image-block-img" />
+        {isPdf ? (
+          <iframe
+            src={url}
+            title={caption || 'PDF'}
+            className="image-block-pdf"
+            style={{ height: pdf_height }}
+          />
+        ) : (
+          <img src={url} alt={alt} className="image-block-img" />
+        )}
         {caption && <p className="image-block-caption">{caption}</p>}
       </div>
     </div>
