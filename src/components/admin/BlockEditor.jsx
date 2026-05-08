@@ -1018,6 +1018,26 @@ function NoteCardEditor({ card, onUpdate, onRemove, onAddTodo, onUpdateTodo, onR
     if (editorRef.current) onUpdate({ body: editorRef.current.innerHTML, isHtml: true })
   }
 
+  const handleBlur = () => {
+    if (!editorRef.current) return
+    const clean = sanitizeHtml(editorRef.current.innerHTML)
+    if (clean !== editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = clean
+    }
+    onUpdate({ body: clean, isHtml: true })
+  }
+
+  const handlePaste = (e) => {
+    e.preventDefault()
+    const html = e.clipboardData.getData('text/html')
+    const plain = e.clipboardData.getData('text/plain')
+    const sanitized = html
+      ? sanitizeHtml(html)
+      : plain.split('\n').filter(Boolean).map(l => `<p>${l}</p>`).join('')
+    document.execCommand('insertHTML', false, sanitized)
+    if (editorRef.current) onUpdate({ body: editorRef.current.innerHTML, isHtml: true })
+  }
+
   const handleBadgesChange = (val) => {
     const badges = val.split(',').map(b => b.trim()).filter(Boolean)
     onUpdate({ badges })
@@ -1144,6 +1164,8 @@ function NoteCardEditor({ card, onUpdate, onRemove, onAddTodo, onUpdateTodo, onR
         suppressContentEditableWarning
         className="rich-editor rich-editor-dark"
         onInput={handleInput}
+        onBlur={handleBlur}
+        onPaste={handlePaste}
         style={{ minHeight: 100 }}
       />
 
