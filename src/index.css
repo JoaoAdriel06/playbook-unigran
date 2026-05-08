@@ -2093,13 +2093,19 @@ td:first-child { font-weight: 500; color: #F4F4F5; }
   flex: 1;
 }
 
-.notepad-card-body p { margin: 0 0 8px; }
-.notepad-card-body p:last-child { margin-bottom: 0; }
+.notepad-card-body p,
+.notepad-card-body div { margin: 0 0 8px; }
+.notepad-card-body p:last-child,
+.notepad-card-body div:last-child { margin-bottom: 0; }
 .notepad-card-body ul, .notepad-card-body ol { padding-left: 20px; margin-bottom: 10px; }
 .notepad-card-body li { margin-bottom: 4px; line-height: 1.6; }
 .notepad-card-body strong { color: #F4F4F5; font-weight: 600; }
 .notepad-card-body em { font-style: italic; opacity: 0.8; }
 .notepad-card-body hr { border: none; border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 12px 0; }
+
+/* Spacing for div elements created by Enter in contentEditable (Chrome) */
+.rich-editor p,
+.rich-editor div { margin-bottom: 6px; }
 
 .notepad-todos { display: flex; flex-direction: column; margin-top: auto; padding-top: 4px; }
 .notepad-todos-divider { height: 1px; background: rgba(255, 255, 255, 0.07); margin: 12px 0 10px; }
