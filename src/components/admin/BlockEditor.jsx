@@ -1190,6 +1190,8 @@ function NoteCardEditor({ card, onUpdate, onRemove, onAddTodo, onUpdateTodo, onR
 function NotebookEditor({ content, onChange }) {
   const cards = content.cards || []
   const layout = content.layout || 'grid'
+  const headerCard = content.header_card || null
+  const hasHeader = !!headerCard
 
   const addCard = () => onChange({
     ...content,
@@ -1224,9 +1226,59 @@ function NotebookEditor({ content, onChange }) {
     updateCard(cardId, { todos: card.todos.filter(t => t.id !== todoId) })
   }
 
+  const toggleHeader = () => {
+    if (hasHeader) {
+      onChange({ ...content, header_card: null })
+    } else {
+      onChange({
+        ...content,
+        header_card: { id: `hdr_${Date.now()}`, icon: '📌', title: 'Orientações', subtitle: '', body: '', isHtml: true, color: 'default', todos: [] }
+      })
+    }
+  }
+
   return (
     <div className="card">
       <div className="card-title">🗒️ Editor de Bloco de Notas</div>
+
+      {/* Header card toggle */}
+      <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 'var(--r-lg)', border: `1px solid ${hasHeader ? 'var(--accent)' : 'var(--border)'}`, background: hasHeader ? 'rgba(240,173,78,0.06)' : 'var(--bg-3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: hasHeader ? 16 : 0 }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: hasHeader ? 'var(--accent)' : 'var(--text-2)' }}>
+              📋 Bloco inicial de orientações
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              Card em largura total exibido acima dos demais — ideal para instruções específicas
+            </div>
+          </div>
+          <button
+            type="button"
+            className={'btn btn-sm ' + (hasHeader ? 'btn-primary' : 'btn-secondary')}
+            onClick={toggleHeader}
+          >{hasHeader ? '✓ Ativado' : '+ Ativar'}</button>
+        </div>
+
+        {hasHeader && (
+          <NoteCardEditor
+            card={headerCard}
+            onUpdate={patch => onChange({ ...content, header_card: { ...headerCard, ...patch } })}
+            onRemove={toggleHeader}
+            onAddTodo={() => {
+              const newTodo = { id: `t_${Date.now()}`, text: '' }
+              onChange({ ...content, header_card: { ...headerCard, todos: [...(headerCard.todos || []), newTodo] } })
+            }}
+            onUpdateTodo={(todoId, text) => onChange({
+              ...content,
+              header_card: { ...headerCard, todos: (headerCard.todos || []).map(t => t.id === todoId ? { ...t, text } : t) }
+            })}
+            onRemoveTodo={todoId => onChange({
+              ...content,
+              header_card: { ...headerCard, todos: (headerCard.todos || []).filter(t => t.id !== todoId) }
+            })}
+          />
+        )}
+      </div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
         <div className="form-group" style={{ flex: 1, minWidth: 220, marginBottom: 0 }}>
@@ -1520,43 +1572,60 @@ function ImageEditor({ content, onChange }) {
 
   const width = content.width ?? 100
   const align = content.align || 'center'
+  const isPdf = content.file_type === 'pdf'
+  const pdfHeight = content.pdf_height ?? 600
 
   const handleFile = (e) => {
     const file = e.target.files[0]
     if (!file) return
     e.target.value = ''
     setError('')
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Arquivo muito grande. Máximo 5 MB.')
+    const maxMb = file.type === 'application/pdf' ? 20 : 5
+    if (file.size > maxMb * 1024 * 1024) {
+      setError(`Arquivo muito grande. Máximo ${maxMb} MB.`)
       return
     }
     const reader = new FileReader()
-    reader.onload = (ev) => onChange({ ...content, url: ev.target.result })
+    reader.onload = (ev) => onChange({
+      ...content,
+      url: ev.target.result,
+      file_type: file.type === 'application/pdf' ? 'pdf' : 'image',
+    })
     reader.readAsDataURL(file)
   }
 
   return (
     <div className="card">
-      <div className="card-title">🖼️ Editor de Imagem</div>
+      <div className="card-title">🖼️ Editor de Imagem / PDF</div>
 
       {/* Upload */}
       <div style={{ marginBottom: 20 }}>
         <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
-          📁 Selecionar imagem
+          📁 Selecionar arquivo
         </button>
-        <span style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 10 }}>PNG, JPG, GIF, WebP — máx. 5 MB</span>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+        <span style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 10 }}>
+          Imagens (PNG, JPG, GIF, WebP) até 5 MB · PDF até 20 MB
+        </span>
+        <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={handleFile} />
         {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 6 }}>{error}</p>}
       </div>
 
       {/* Preview */}
       {content.url && (
-        <div style={{ marginBottom: 20, textAlign: align, border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12, background: 'var(--bg-3)' }}>
-          <img
-            src={content.url}
-            alt={content.alt || ''}
-            style={{ maxWidth: `${width}%`, borderRadius: 'var(--r)', display: 'inline-block' }}
-          />
+        <div style={{ marginBottom: 20, textAlign: isPdf ? 'left' : align, border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12, background: 'var(--bg-3)' }}>
+          {isPdf ? (
+            <iframe
+              src={content.url}
+              style={{ width: `${width}%`, height: pdfHeight, border: 'none', borderRadius: 'var(--r)', display: 'block' }}
+              title="Preview PDF"
+            />
+          ) : (
+            <img
+              src={content.url}
+              alt={content.alt || ''}
+              style={{ maxWidth: `${width}%`, borderRadius: 'var(--r)', display: 'inline-block' }}
+            />
+          )}
         </div>
       )}
 
@@ -1579,43 +1648,66 @@ function ImageEditor({ content, onChange }) {
         </div>
       </div>
 
-      {/* Alignment */}
-      <div className="form-group">
-        <label className="form-label">Alinhamento</label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {[
-            { value: 'left',   label: '⬅ Esquerda' },
-            { value: 'center', label: '↔ Centro' },
-            { value: 'right',  label: '➡ Direita' },
-          ].map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              className={'btn btn-sm ' + (align === opt.value ? 'btn-primary' : 'btn-secondary')}
-              onClick={() => onChange({ ...content, align: opt.value })}
-            >{opt.label}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* Alt / Caption */}
-      <div style={{ display: 'flex', gap: 12 }}>
-        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-          <label className="form-label">Texto alternativo (acessibilidade)</label>
+      {/* PDF height slider */}
+      {isPdf && (
+        <div className="form-group">
+          <label className="form-label">Altura do visualizador: {pdfHeight}px</label>
           <input
-            className="form-input"
-            value={content.alt || ''}
-            onChange={e => onChange({ ...content, alt: e.target.value })}
-            placeholder="Descrição da imagem para leitores de tela"
+            type="range"
+            min={300}
+            max={1200}
+            step={50}
+            value={pdfHeight}
+            onChange={e => onChange({ ...content, pdf_height: Number(e.target.value) })}
+            style={{ width: '100%', accentColor: 'var(--accent)' }}
           />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+            <span>300px</span><span>750px</span><span>1200px</span>
+          </div>
         </div>
+      )}
+
+      {/* Alignment (images only) */}
+      {!isPdf && (
+        <div className="form-group">
+          <label className="form-label">Alinhamento</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { value: 'left',   label: '⬅ Esquerda' },
+              { value: 'center', label: '↔ Centro' },
+              { value: 'right',  label: '➡ Direita' },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                className={'btn btn-sm ' + (align === opt.value ? 'btn-primary' : 'btn-secondary')}
+                onClick={() => onChange({ ...content, align: opt.value })}
+              >{opt.label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Caption */}
+      <div style={{ display: 'flex', gap: 12 }}>
+        {!isPdf && (
+          <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+            <label className="form-label">Texto alternativo (acessibilidade)</label>
+            <input
+              className="form-input"
+              value={content.alt || ''}
+              onChange={e => onChange({ ...content, alt: e.target.value })}
+              placeholder="Descrição da imagem para leitores de tela"
+            />
+          </div>
+        )}
         <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
           <label className="form-label">Legenda (opcional)</label>
           <input
             className="form-input"
             value={content.caption || ''}
             onChange={e => onChange({ ...content, caption: e.target.value })}
-            placeholder="Texto exibido abaixo da imagem"
+            placeholder="Texto exibido abaixo do arquivo"
           />
         </div>
       </div>
